@@ -1,5 +1,7 @@
 import request from '../utils/request'
 import { ClusterVO } from '../types/cluster'
+import { ApiResponse } from './response'
+import { AxiosResponse } from 'axios'
 
 export function createCluster(data: {
   clusterName: string
@@ -14,7 +16,7 @@ export function createCluster(data: {
 }
 
 
-export function getCluster() {
+export function getCluster(): Promise<AxiosResponse<ApiResponse<ClusterVO[]>>> {
   return request.get('/api/cluster/getCluster')
 }
 
