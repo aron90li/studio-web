@@ -307,15 +307,15 @@ export default function Cluster() {
                     </Form.Item>
 
                     <Form.Item label="默认配置" field="defaultConf">
-                        <TextArea autoSize={{ minRows: 3, maxRows: 8 }} placeholder="默认配置内容" />
+                        <TextArea autoSize={{ minRows: 3, maxRows: 20 }} placeholder="默认配置内容" />
                     </Form.Item>
 
                     <Form.Item label="Pod 模板" field="podTemplate">
-                        <TextArea autoSize={{ minRows: 3, maxRows: 8 }} placeholder="K8s Pod 模板内容" />
+                        <TextArea autoSize={{ minRows: 3, maxRows: 20 }} placeholder="K8s Pod 模板内容" />
                     </Form.Item>
 
                     <Form.Item label="Kubeconfig" field="kubeconfig">
-                        <TextArea autoSize={{ minRows: 3, maxRows: 8 }} placeholder="Kubeconfig 内容" />
+                        <TextArea autoSize={{ minRows: 3, maxRows: 20 }} placeholder="Kubeconfig 内容" />
                     </Form.Item>
                 </Form>
             </Modal>
