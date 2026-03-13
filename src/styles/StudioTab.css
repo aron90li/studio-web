@@ -1,0 +1,114 @@
+/* ===== StudioTab.css ===== */
+/* VS Code 浅色风格 - 适配 Arco Design Tabs (card 类型) */
+
+/* 1. Tabs 容器 */
+.custom-studio-tabs.arco-tabs {
+  background-color: #ffffff !important;
+  border-bottom: none !important;
+  height: 35px; /* 保持一致 */
+}
+
+/* 2. 标签页头部栏 (包含所有 tab 和右边按钮) */
+.custom-studio-tabs .arco-tabs-header-nav::before {
+  content: none !important; /* 去掉 Arco 默认的底部边框线 */
+}
+
+.custom-studio-tabs .arco-tabs-header-nav {
+  background-color: #ffffff;
+  border-bottom: none; /* VS Code 风格的底部浅灰线 1px solid #e0e0e0 */
+}
+
+/* 3. 单个 Tab 的公共样式（未选中） */
+.custom-studio-tabs.arco-tabs-card .arco-tabs-tab {
+  background-color: #f3f3f3 !important;      /* 未选中背景（VS Code 浅灰） */
+  border: 1px solid #e0e0e0 !important;       /* 边框 */
+  border-bottom: none !important;             /* 底部边框去掉（由 header 统一提供） */
+  color: #5a5a5a !important;                  /* 未选中文字色 */
+  margin-right: 0 !important;                 /* 去掉间隔，紧挨着 */
+  border-radius: 4px 4px 0 0 !important;      /* 仅顶部圆角 */
+  height: 35px !important;
+  line-height: 35px !important;
+  padding: 0 16px !important;                 /* 增加左右内边距，更宽松 */
+  transition: background-color 0.1s ease;
+  font-weight: 400;
+  position: relative;
+  top: 1px;                                    /* 向下微调，让底部 border 和 header 线融合 */
+}
+
+/* 4. 鼠标悬停（未选中） */
+.custom-studio-tabs.arco-tabs-card .arco-tabs-tab:hover {
+  background-color: #eaeaea !important;
+  color: #333333 !important;
+}
+
+/* 5. 选中态 Tab（核心 VS Code 风格） */
+.custom-studio-tabs.arco-tabs-card .arco-tabs-tab-active {
+  background-color: #ffffff !important;
+  border-top: 2px solid #007acc !important;   /* 顶部蓝色高亮条 */
+  border-left: 1px solid #e0e0e0 !important;
+  border-right: 1px solid #e0e0e0 !important;
+  border-bottom: 1px solid #ffffff !important; /* 白色底边，盖住 header 线，实现融合 */
+  color: #000000 !important;
+  font-weight: 500 !important;
+  z-index: 2 !important;
+  transform: translateY(0);                    /* 修复定位偏移 */
+}
+
+/* 6. 选中态 Tab 的底部小三角/多余元素隐藏（Arco 有时会生成装饰性元素） */
+.custom-studio-tabs.arco-tabs-card .arco-tabs-tab-active .arco-tabs-tab-close-btn {
+  color: #000000; /* 关闭按钮颜色 */
+}
+
+/* 7. 修复选中态下划线（Arco 默认有下划线，强制去掉） */
+.custom-studio-tabs .arco-tabs-header-nav .arco-tabs-tab-active::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* 8. 标题内部自定义 div 的样式（你的 title 里是一个 div） */
+.custom-studio-tabs .arco-tabs-tab .arco-tabs-tab-title,
+.custom-studio-tabs .arco-tabs-tab .arco-tabs-tab-title > div {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit !important;      /* 继承父级的 color，不再单独设置 */
+  font-size: 13px;
+}
+
+/* 9. 红点标记（dirty 状态）保持不变，但微调位置 */
+.custom-studio-tabs .arco-tabs-tab-title span[style*="border-radius: 50%"] {
+  margin-left: 6px !important;
+  background-color: #f53f3f !important;
+}
+
+/* 10. 添加按钮 (+) 的样式 */
+.custom-studio-tabs .arco-tabs-add-btn {
+  color: #666666;
+  background-color: transparent;
+  border: 1px dashed #c0c0c0;
+  height: 28px;
+  width: 28px;
+  border-radius: 4px;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.custom-studio-tabs .arco-tabs-add-btn:hover {
+  color: #007acc;
+  border-color: #007acc;
+  background-color: #f0f7ff;
+}
+
+/* 11. Tooltip 内的文字（如果有额外样式干扰） */
+.arco-tooltip-content {
+  font-size: 12px;
+}
+
+/* 12. 保证最外层高度稳定 */
+.custom-studio-tabs,
+.custom-studio-tabs .arco-tabs-content {
+  height: 35px;
+  overflow: hidden;
+}
