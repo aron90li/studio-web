@@ -9,6 +9,7 @@ import { TaskVO } from "../../types/task";
 import * as monaco from 'monaco-editor';
 import loader from "@monaco-editor/loader";
 import { initMonacoSQLTables } from "../../utils/sqlCompletion"
+import StudioRightPanel from "./StudioRightPanel";
 
 loader.config({
     monaco,
@@ -41,14 +42,18 @@ export default function StudioEditorContainer({
     const loadTokenRef = useRef(0);
     /** TaskVO缓存 */
     const taskVOMapRef = useRef<Record<string, TaskVO>>({});
-    /** 侧边栏状态 */
-    const [activePanel, setActivePanel] = useState<
-        "source" | "dim" | "result" | "env" | "detail"
-    >("source");
-
-    // 
+    // 用于设置监听保存
     const activeTaskIdRef = useRef<string | undefined>(activeTaskId);
+    const changeTimerRef = useRef<NodeJS.Timeout>();
+    // sql注册
+    const sqlInitRef = useRef(false)
+    const disposableRef = useRef<monaco.IDisposable | null>(null)
 
+    // 20260313 panel的相关变量 激活的tab的相关信息
+    const [panelType, setPanelType] = useState<"source" | "dim" | "result" | "env" | "detail" | null>(null);
+
+    // ref → 逻辑 state → UI
+    const [activeTaskVO, setActiveTaskVO] = useState<TaskVO | undefined>()
 
     // 保存任务
     const saveTask = async (taskId: string) => {
@@ -66,7 +71,11 @@ export default function StudioEditorContainer({
                 projectId,
                 taskId,
                 taskVersion: taskVO.taskVersion,
-                taskSql: content
+                taskSql: content,
+                taskParam: taskVO.taskParam,
+                taskSource: taskVO.taskSource,
+                taskSide: taskVO.taskSide,
+                taskSink: taskVO.taskSink
             });
 
             if (!res.data.success) {
@@ -77,7 +86,12 @@ export default function StudioEditorContainer({
 
             Message.info('保存成功')
             const newTask = res.data.data;
-            taskVOMapRef.current[taskId] = newTask
+            taskVOMapRef.current[taskId] = newTask;
+
+            // 保存成功后，如果taskId是当前id
+            if (taskId === activeTaskIdRef.current) {
+                setActiveTaskVO(newTask);
+            }
 
             onStateChange(taskId, { dirty: false, saving: false });
 
@@ -88,13 +102,22 @@ export default function StudioEditorContainer({
         }
     };
 
+    // 加载 数据, 两个地方调用，taskId就是activeTaskId
     const loadModel = async (taskId: string) => {
         if (!editorRef.current) return;
         const token = ++loadTokenRef.current;
         const uri = monaco.Uri.parse(`task://aron.studio.com/${taskId}`);
 
+        // 已经存在
         if (modelsRef.current.has(taskId)) {
             editorRef.current.setModel(modelsRef.current.get(taskId)!);
+
+            if (activeTaskIdRef.current === taskId) {
+                const task = taskVOMapRef.current[taskId];
+                if (task) {
+                    setActiveTaskVO(task);
+                }
+            }
             return;
         }
 
@@ -102,13 +125,21 @@ export default function StudioEditorContainer({
         if (existingModel) {
             modelsRef.current.set(taskId, existingModel);
             editorRef.current.setModel(existingModel);
+
+            if (activeTaskIdRef.current === taskId) {
+                const task = taskVOMapRef.current[taskId];
+                if (task) {
+                    setActiveTaskVO(task);
+                }
+            }
             return;
         }
 
-        const currentTaskId = activeTaskId;
+        // 不存在获取
         const res = await getTask(projectId, taskId);
-        if (currentTaskId !== taskId) return;
 
+        // 双重校验防竟态
+        if (activeTaskIdRef.current !== taskId) return;
         if (token !== loadTokenRef.current) return;
 
         if (!res.data.success) {
@@ -116,20 +147,32 @@ export default function StudioEditorContainer({
             return;
         }
 
+        // 成功设置数据
         const task = res.data.data;
-        const model = monaco.editor.createModel(task.taskSql, "sql", uri);
-
+        const model = monaco.editor.createModel(task.taskSql ?? "", "sql", uri);
         modelsRef.current.set(taskId, model);
         taskVOMapRef.current[taskId] = task
+        // 再次校验
+        if (taskId === activeTaskIdRef.current) {
+            setActiveTaskVO(task);
+        }
         editorRef.current.setModel(model);
         onStateChange(taskId, { dirty: false });
     };
 
-    // 监听taskId变化
+    // 监听taskId变化, 激活的任务都在这里设置
     useEffect(() => {
-        if (!activeTaskId) return;
+        if (!activeTaskId) {
+            activeTaskIdRef.current = undefined;
+            setActiveTaskVO(undefined);
+            setPanelType(null);
+            return;
+        }
+
+        // 注意这里不要设置  setActiveTaskVO, 它们在loadModel中设置
         activeTaskIdRef.current = activeTaskId
         loadModel(activeTaskId);
+        setPanelType(null)
     }, [activeTaskId]);
 
     // tab 关闭清理
@@ -139,6 +182,7 @@ export default function StudioEditorContainer({
                 /** 当前 editor 正在使用 */
                 if (editorRef.current?.getModel() === model) {
                     editorRef.current.setModel(null);
+                    // editorRef.current.setModel(undefined as any)
                 }
 
                 /** dispose model */
@@ -147,6 +191,12 @@ export default function StudioEditorContainer({
 
                 /** 删除 taskVO */
                 delete taskVOMapRef.current[taskId]
+
+                // 如果是 activeTaskId
+                if (taskId === activeTaskId) {
+                    activeTaskIdRef.current = undefined
+                    setActiveTaskVO(undefined)
+                }
             }
         });
 
@@ -155,29 +205,45 @@ export default function StudioEditorContainer({
     // 清理
     useEffect(() => {
         return () => {
+            if (changeTimerRef.current) {
+                clearTimeout(changeTimerRef.current);
+            }
+
             modelsRef.current.forEach(m => m.dispose())
             modelsRef.current.clear()
+            // editorRef.current?.dispose()
+            disposableRef.current?.dispose()
         }
     }, [])
 
     // model 挂载
     const handleMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
         // 表名字补全
-        initMonacoSQLTables(monaco);
+        if (!sqlInitRef.current) {
+            initMonacoSQLTables(monaco);
+            sqlInitRef.current = true
+        }
 
         editorRef.current = editor;
 
         if (activeTaskId) {
+            activeTaskIdRef.current = activeTaskId
             loadModel(activeTaskId);
         }
 
         // 注册监听器
-        const disposable = editor.onDidChangeModelContent(() => {
+        disposableRef.current = editor.onDidChangeModelContent(() => {
             const model = editor.getModel();
             if (!model) return;
 
-            const taskId = model.uri.path.replace("/", "");
-            onStateChange(taskId, { dirty: true });
+            if (changeTimerRef.current) {
+                clearTimeout(changeTimerRef.current);
+            }
+
+            changeTimerRef.current = setTimeout(() => {
+                const taskId = model.uri.path.slice(1);
+                onStateChange(taskId, { dirty: true })
+            }, 300);
         });
 
         // ctrl + s 保存
@@ -189,15 +255,38 @@ export default function StudioEditorContainer({
         });
     };
 
+    const togglePanel = (type: "source" | "dim" | "result" | "env" | "detail") => {
+        if (panelType === type) {
+            setPanelType(null);
+        } else {
+            setPanelType(type);
+        }
+    };
+
+    const updateTaskVOField = (patch: Partial<TaskVO>) => {
+        const taskId = activeTaskIdRef.current;
+        if (!taskId) return;
+
+        const current = taskVOMapRef.current[taskId];
+        if (!current) return
+        const updated = {
+            ...current,
+            ...patch
+        };
+
+        taskVOMapRef.current[taskId] = updated;
+        setActiveTaskVO(updated);
+        onStateChange(taskId, { dirty: true });
+    };
 
     return (
-        <Layout style={{ height: "100%", width: '100%', borderTop:0}}>
+        <Layout style={{ height: "100%", width: '100%', borderTop: 0 }}>
 
             <Layout.Header
                 style={{
                     display: "flex",
                     height: 30,
-                    margin:0, padding:0, borderTop:0
+                    margin: 0, padding: 0, borderTop: 0
 
                 }}
             >
@@ -223,17 +312,16 @@ export default function StudioEditorContainer({
 
                 style={{
                     display: "flex",
-                    // overflow: "hidden",
                     borderTop: "3px solid #165DFF",
-                    paddingTop: 5
+                    paddingTop: 5,
+                    position: "relative"
                 }}
             >
                 <div
                     style={{
                         flex: 1,
                         borderRight: "1px solid #eee",
-                        minWidth: 0,
-                        // overflow: 'hidden'
+                        minWidth: 0
                     }}
                 >
                     <Editor
@@ -244,11 +332,21 @@ export default function StudioEditorContainer({
                         options={{
                             minimap: { enabled: true },
                             fontSize: 14,
-                            automaticLayout: true
+                            automaticLayout: true,
+                            // smoothScrolling:true,
+                            // scrollBeyondLastLine:false,
                         }}
 
                     />
                 </div>
+
+                {panelType && activeTaskVO && (
+                    <StudioRightPanel
+                        taskVO={activeTaskVO}
+                        panelType={panelType}
+                        onChange={updateTaskVOField}
+                    />
+                )}
 
                 <div
                     style={{
@@ -263,8 +361,11 @@ export default function StudioEditorContainer({
                 >
                     <Button
                         type="text" size="mini"
-                        style={styles.buttonStyle}
-                        onClick={() => setActivePanel("detail")}
+                        style={{
+                            ...styles.buttonStyle,
+                            ...(panelType === "detail" ? styles.activeButton : {})
+                        }}
+                        onClick={() => togglePanel("detail")}
                     >
                         任务详情
                     </Button>
@@ -272,8 +373,11 @@ export default function StudioEditorContainer({
                     {/* 源表 */}
                     <Button
                         type="text" size="mini"
-                        style={styles.buttonStyle}
-                        onClick={() => setActivePanel("source")}
+                        style={{
+                            ...styles.buttonStyle,
+                            ...(panelType === "source" ? styles.activeButton : {})
+                        }}
+                        onClick={() => togglePanel("source")}
                     >
                         源表
                     </Button>
@@ -281,8 +385,11 @@ export default function StudioEditorContainer({
                     {/* 维表 */}
                     <Button
                         type="text" size="mini"
-                        style={styles.buttonStyle}
-                        onClick={() => setActivePanel("dim")}
+                        style={{
+                            ...styles.buttonStyle,
+                            ...(panelType === "dim" ? styles.activeButton : {})
+                        }}
+                        onClick={() => togglePanel("dim")}
                     >
                         维表
                     </Button>
@@ -290,8 +397,11 @@ export default function StudioEditorContainer({
                     {/* 结果表 */}
                     <Button
                         type="text" size="mini"
-                        style={styles.buttonStyle}
-                        onClick={() => setActivePanel("result")}
+                        style={{
+                            ...styles.buttonStyle,
+                            ...(panelType === "result" ? styles.activeButton : {})
+                        }}
+                        onClick={() => togglePanel("result")}
                     >
                         结果表
                     </Button>
@@ -299,8 +409,11 @@ export default function StudioEditorContainer({
                     {/* 环境参数 */}
                     <Button
                         type="text" size="mini"
-                        style={styles.buttonStyle}
-                        onClick={() => setActivePanel("env")}
+                        style={{
+                            ...styles.buttonStyle,
+                            ...(panelType === "env" ? styles.activeButton : {})
+                        }}
+                        onClick={() => togglePanel("env")}
                     >
                         环境参数
                     </Button>
@@ -321,7 +434,9 @@ const styles: any = {
         minWidth: 'unset',            // 移除默认最小宽度限制
         letterSpacing: '4px'
     },
-    iconStyle: {
-
+    activeButton: {
+        color: '#165DFF',
+        // fontWeight: 600,
+        backgroundColor: '#E8F3FF'
     }
 }
