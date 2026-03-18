@@ -44,3 +44,15 @@ export function deleteProjectUser(data: {
 export function getProjectUsers(projectId: string) {
   return request.get('/api/project/getProjectUsers', { params: { projectId } })
 }
+
+export function getProjectDetail(projectId: string, detailType: string) {
+  return request.get('/api/project/getProjectDetail', { params: { projectId, detailType } })
+}
+
+export function createOrUpdateProjectDetail(data: {
+  projectId: string
+  detailType: string
+  detailValue: string
+}) {
+  return request.post('/api/project/createOrUpdateProjectDetail', data)
+}

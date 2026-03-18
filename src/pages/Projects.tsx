@@ -1,15 +1,19 @@
 import { Card, Table, Button, Input, Space, Modal, Form, Message, Layout, Select, SelectProps } from '@arco-design/web-react';
 import type { TableProps } from '@arco-design/web-react';
-import { IconEdit, IconDelete, IconUser, IconPlus } from '@arco-design/web-react/icon';
+import { IconEdit, IconDelete, IconUser, IconPlus, IconBook } from '@arco-design/web-react/icon';
 import '@arco-design/web-react/dist/css/arco.css';
 import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createProject, deleteProjects, getProjectUsers, updateProject, deleteProjectUser, grantProjectToUser } from '../api/project';
+import {
+    createProject, deleteProjects, getProjectUsers, updateProject, deleteProjectUser, grantProjectToUser,
+    getProjectDetail, createOrUpdateProjectDetail
+} from '../api/project';
 import { ProjectVO } from '../types/project';
 import { useProjects } from '../context/useProjects';
 import { useUser } from '../context/useUser';
 import { UserVO } from '../types/user';
 import { getAllUsers } from '../api/user';
+import ProjectDetailPanel from './project/ProjectDetailPanel';
 
 const { Search } = Input;
 
@@ -30,6 +34,10 @@ export default function Projects() {
     const [editingProjectUsers, setEditingProjectUsers] = useState<UserVO[]>([]);
     const [allUsers, setAllUsers] = useState<UserVO[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string | undefined>('');
+
+    // 项目详情使用
+    const [detailPanelVisible, setDetailPanelVisible] = useState(false);
+    const [currentDetailProjectId, setCurrentDetailProjectId] = useState<string | null>(null);
 
     const userColumns: TableProps<UserVO>['columns'] = [
         {
@@ -189,6 +197,17 @@ export default function Projects() {
                             style={{ color: '#165DFF' }}
                         >
                             成员
+                        </Button>
+                        <Button
+                            type="text"
+                            icon={<IconBook />}
+                            onClick={() => {
+                                setCurrentDetailProjectId(record.projectId);
+                                setDetailPanelVisible(true);
+                            }}
+                            style={{ color: '#165DFF' }}
+                        >
+                            详情
                         </Button>
                         <Button
                             type="text"
@@ -415,6 +434,16 @@ export default function Projects() {
                 />
 
             </Modal>
+
+            {/* 项目详情侧边面板 */}
+            <ProjectDetailPanel
+                visible={detailPanelVisible}
+                projectId={currentDetailProjectId}
+                onClose={() => {
+                    setDetailPanelVisible(false);
+                    setCurrentDetailProjectId(null);
+                }}
+            />
 
         </>
     );
