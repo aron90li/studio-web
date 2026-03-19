@@ -10,3 +10,9 @@ export interface ProjectVO {
     createTime: string;
     updateTime: string;
 }
+
+export interface ProjectDetailVO {
+    projectId: string;
+    detailType: string;
+    detailValue: string;
+}

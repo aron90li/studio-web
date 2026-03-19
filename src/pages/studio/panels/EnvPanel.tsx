@@ -1,9 +1,10 @@
 import { TaskVO } from "../../../types/task";
-import { Input, Typography, Message } from '@arco-design/web-react';
 import { useState, useEffect } from "react";
-
-const { Title } = Typography;
-
+import Editor from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
+import loader from '@monaco-editor/loader';
+// 确保配置了 loader，如果主项目已配置可省略
+loader.config({ monaco });
 interface Props {
     taskVO: TaskVO
     onChange: (patch: Partial<TaskVO>) => void
@@ -14,29 +15,30 @@ export default function EnvPanel({
     onChange
 }: Props) {
 
-    // 本地文本状态，避免直接修改 taskVO.taskParam
-    const [text, setText] = useState(taskVO?.taskParam ?? "")
-
-    // 初始化文本框内容
-    useEffect(() => {
-        setText(taskVO?.taskParam ?? "")
-    }, [taskVO?.taskParam])
-
-    // 文本变化时调用 onChange
-    const handleChange = (value: string) => {
-        setText(value);
-        onChange({ taskParam: value });
-    }
+    if (!taskVO) return null;
 
     return (
-        <div style={{ padding: 6, height:'100%', overflow: 'auto'}}>
-            <Title heading={6}>环境参数</Title>
-            <Input.TextArea
-
-                value={text}
-                onChange={handleChange}
-                placeholder="请输入 taskParam 文本"
-                style={{ width: "100%", fontFamily: 'monospace' }}
+        < div style={{ height: "100%" }}>
+            <style>
+                {`
+                    .monaco-editor .find-widget {
+                        left: 0px !important;
+                    }
+                `}
+            </style>
+            <Editor
+                height="100%"
+                key={taskVO.taskId}
+                defaultLanguage="sql"
+                theme="light"
+                defaultValue={taskVO.taskParam} // 初始值
+                options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    automaticLayout: true,
+                    padding: { top: 5 }
+                }}
+                onChange={v => { onChange({ taskParam: v }) }}
             />
         </div>
     )

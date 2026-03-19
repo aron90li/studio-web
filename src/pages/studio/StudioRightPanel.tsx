@@ -51,17 +51,17 @@ export default function StudioRightPanel({
 const styles: Record<string, React.CSSProperties> = {
 
     container: {
-        height:'100%',
+        height: '100%',
         position: "absolute",
         top: 0,
         bottom: 0,
         right: 28,             // 不覆盖侧边栏
         width: 420,
         background: "#fff",
-        borderLeft: "1px solid #eee",
+        borderLeft: "2px solid #eee",
         boxShadow: "-2px 0 8px rgba(0,0,0,0.06)",
         zIndex: 10,
-        overflow: "hidden"
+        // overflow: "hidden"
     }
 
 }
