@@ -233,7 +233,7 @@ export default function ProjectDetailPanel({ visible, projectId, onClose }: Proj
                         `}
                     </style>
                     <Editor
-                        height="400px"
+                        height="600px"
                         key={projectId}
                         defaultLanguage="sql"
                         theme="light"

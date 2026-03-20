@@ -39,6 +39,9 @@ export default function Projects() {
     const [detailPanelVisible, setDetailPanelVisible] = useState(false);
     const [currentDetailProjectId, setCurrentDetailProjectId] = useState<string | null>(null);
 
+    // 分页使用 todo
+    
+
     const userColumns: TableProps<UserVO>['columns'] = [
         {
             title: '用户名',
@@ -324,7 +327,9 @@ export default function Projects() {
                     columns={columns}
                     data={filteredProjects}
                     loading={loading}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                        pageSize: 10
+                    }}
                     border={false}
                     rowKey="projectId"
                 />
