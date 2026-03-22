@@ -93,7 +93,9 @@ export default function Register() {
             {/* 密码输入框：和登录页一致的密码组件、图标、校验 */}
             <Form.Item
               field="password"
-              rules={[{ required: true, message: '请设置密码' }]}
+              rules={[{ required: true, message: '请设置密码' },
+              { match: /^[a-zA-Z0-9_]+$/, message: '密码只能包含字母、数字和下划线' },
+              { minLength: 6, message: '密码长度至少为6位' }]}
             >
               <Input.Password
                 prefix={<IconLock />}

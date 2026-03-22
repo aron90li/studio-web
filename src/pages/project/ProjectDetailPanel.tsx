@@ -17,6 +17,7 @@ loader.config({ monaco });
 interface ProjectDetailPanelProps {
     visible: boolean;
     projectId: string | null;
+    projectName: string | null;
     onClose: () => void;
 }
 
@@ -32,7 +33,7 @@ interface TabData {
 }
 
 
-export default function ProjectDetailPanel({ visible, projectId, onClose }: ProjectDetailPanelProps) {
+export default function ProjectDetailPanel({ visible, projectId, projectName, onClose }: ProjectDetailPanelProps) {
     const initialTabState: Record<TabKey, TabData> = {
         env_template: { loading: false, fetched: false, stringValue: '', listValue: [] },
         alert_tel: { loading: false, fetched: false, stringValue: '', listValue: [] },
@@ -354,7 +355,7 @@ export default function ProjectDetailPanel({ visible, projectId, onClose }: Proj
 
     return (
         <Drawer
-            title="项目详情配置"
+            title={"项目详情: " + projectName}
             visible={visible}
             placement="right"
             width="50%"

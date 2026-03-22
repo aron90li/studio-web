@@ -66,43 +66,44 @@ export default function Studio() {
         if (hasUnsavedChanges) event.preventDefault();
     });
 
+    // todo 要注册全局的blocker，这里不能单独写，后续改正
     // 路由跳转拦截 blocker.state 状态: 'unblocked' | 'blocked' | 'proceeding'
-    const blocker = useBlocker(hasUnsavedChanges);
-    useEffect(() => {
-        if (blocker.state !== 'blocked') return;
-        const nextPath = blocker.location?.pathname || '';
+    // const blocker = useBlocker(hasUnsavedChanges);
+    // useEffect(() => {
+    //     if (blocker.state !== 'blocked') return;
+    //     const nextPath = blocker.location?.pathname || '';
 
-        if (!nextPath.startsWith('/stream/studio/')) {
-            showConfirmModal();
-            return;
-        }
+    //     if (!nextPath.startsWith('/stream/studio/')) {
+    //         showConfirmModal();
+    //         return;
+    //     }
 
-        const segments = nextPath.split('/');
-        const nextProjectId = segments[3];
-        if (!nextProjectId || projectId !== nextProjectId) {
-            showConfirmModal();
-            return;
-        }
+    //     const segments = nextPath.split('/');
+    //     const nextProjectId = segments[3];
+    //     if (!nextProjectId || projectId !== nextProjectId) {
+    //         showConfirmModal();
+    //         return;
+    //     }
 
-        blocker.proceed();
-    }, [blocker.state, blocker.location, projectId]);
+    //     blocker.proceed();
+    // }, [blocker.state, blocker.location, projectId]);
 
-    const showConfirmModal = () => {
-        Modal.confirm({
-            title: '确认离开？',
-            content: '系统不会保存您的更改，确定要离开当前项目或页面吗？',
-            okText: '继续离开',
-            cancelText: '留在页面',
-            okButtonProps: { status: 'danger' },
-            maskClosable: false,
-            onOk: () => {
-                blocker.proceed?.();
-            },
-            onCancel: () => {
-                blocker.reset?.();
-            },
-        });
-    };
+    // const showConfirmModal = () => {
+    //     Modal.confirm({
+    //         title: '确认离开？',
+    //         content: '系统不会保存您的更改，确定要离开当前项目或页面吗？',
+    //         okText: '继续离开',
+    //         cancelText: '留在页面',
+    //         okButtonProps: { status: 'danger' },
+    //         maskClosable: false,
+    //         onOk: () => {
+    //             blocker.proceed?.();
+    //         },
+    //         onCancel: () => {
+    //             blocker.reset?.();
+    //         },
+    //     });
+    // };
 
     {/* 一、任务树相关 *******************************/ }
     // 1.1 任务树, 扁平的, 来自数据库
@@ -622,7 +623,7 @@ export default function Studio() {
             display: 'flex', overflow: 'hidden', minWidth: 0,
         }} >
 
-            <Sider width={200} resizeBoxProps={{ directions: ['right'] }} style={{
+            <Sider width={300} resizeBoxProps={{ directions: ['right'] }} style={{
                 background: '#fff',
                 borderRight: '1px solid #eee',
                 flex: '0 0 auto',   // 不伸缩，但允许 resize 改变 width

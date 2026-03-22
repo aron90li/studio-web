@@ -68,7 +68,7 @@ export default function GlobalTabs() {
             {isAdmin && <TabPane key="datasource" title="数据源" />}
             {isAdmin && <TabPane key="cluster" title="集群管理" />}
             {isAdmin && <TabPane key="system" title="系统管理" />}
-            {isAdmin && <TabPane key="user" title="用户管理" />}
+            {/* {isAdmin && <TabPane key="user" title="用户管理" />} */}
         </Tabs>
     )
 }

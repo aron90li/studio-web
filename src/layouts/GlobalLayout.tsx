@@ -24,7 +24,7 @@ export default function GlobalLayout() {
                     logout()
                     navigate('/')
                 } else if (key === 'profile') {
-                    navigate('/profile')
+                    navigate('/stream/user')
                 }
             }}
         >

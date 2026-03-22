@@ -38,6 +38,7 @@ export default function Projects() {
     // 项目详情使用
     const [detailPanelVisible, setDetailPanelVisible] = useState(false);
     const [currentDetailProjectId, setCurrentDetailProjectId] = useState<string | null>(null);
+    const [currentDetailProjectName, setCurrentDetailProjectName] = useState<string | null>(null);
 
     // 分页使用 todo
     
@@ -206,6 +207,7 @@ export default function Projects() {
                             icon={<IconBook />}
                             onClick={() => {
                                 setCurrentDetailProjectId(record.projectId);
+                                setCurrentDetailProjectName(record.projectName);
                                 setDetailPanelVisible(true);
                             }}
                             style={{ color: '#165DFF' }}
@@ -444,9 +446,11 @@ export default function Projects() {
             <ProjectDetailPanel
                 visible={detailPanelVisible}
                 projectId={currentDetailProjectId}
+                projectName={currentDetailProjectName}
                 onClose={() => {
                     setDetailPanelVisible(false);
                     setCurrentDetailProjectId(null);
+                    setCurrentDetailProjectName(null);
                 }}
             />
 
