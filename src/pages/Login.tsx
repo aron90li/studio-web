@@ -20,8 +20,19 @@ export default function Login() {
 
   // 加载验证码
   const loadCaptcha = async () => {
-    const res = await getCaptcha()
-    setCaptcha(res.data.data)
+    try {
+      const res = await getCaptcha()
+      if (!res.data.success) {
+        Message.error('获取验证码失败')
+        console.log("获取验证码失败：" + res.data.msg)
+        return
+      }
+
+      setCaptcha(res.data.data)
+    } catch (err) {
+      Message.error("获取验证码失败")
+      console.error(err)
+    }
   }
 
   // UserProvider 中的 useEffect先于此执行
@@ -48,7 +59,7 @@ export default function Login() {
       } else {
         Message.error('获取用户信息失败')
       }
-      
+
       Message.success('登录成功')
       navigate('/stream/projects')
     } catch (err) {

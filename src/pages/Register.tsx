@@ -27,9 +27,16 @@ export default function Register() {
   const loadCaptcha = async () => {
     try {
       const res = await getCaptcha()
+      if (!res.data.success) {
+        Message.error('获取验证码失败')
+        console.log("获取验证码失败：" + res.data.msg)
+        return
+      }
+
       setCaptcha(res.data.data)
     } catch (err) {
-      Message.error('验证码加载失败，请稍后重试')
+      Message.error("获取验证码失败")
+      console.error(err)
     }
   }
 

@@ -15,10 +15,11 @@ export function addUser(data: {
   return request.post('/api/user/addUser', data)
 }
 
-export function deleteUser(data: {
+export function updateEnabled(data: {
   userId: string
+  enabled: boolean
 }) {
-  return request.post('/api/user/deleteUser', data)
+  return request.post('/api/user/updateEnabled', data)
 }
 
 export function updatePassword(data: {

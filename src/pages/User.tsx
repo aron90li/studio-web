@@ -3,9 +3,11 @@ import {
     Button, Card, Empty, Form, Input, Message, Modal, Space, Table, Tag, Typography
 } from '@arco-design/web-react';
 import type { TableProps } from '@arco-design/web-react';
-import { IconDelete, IconPlus, IconRefresh } from '@arco-design/web-react/icon';
+import { IconDelete, IconPlus, IconRefresh, IconWechat, IconPlayCircle, IconPlayArrow,  IconStop, 
+    IconPoweroff, IconCloseCircle, IconMute
+} from '@arco-design/web-react/icon';
 import { useUser } from '../context/useUser';
-import { addUser, deleteUser, getAllUsers, resetPassword, updatePassword } from '../api/user';
+import { addUser, updateEnabled, getAllUsers, resetPassword, updatePassword } from '../api/user';
 import { UserVO } from '../types/user';
 
 type PanelKey = 'profile' | 'users';
@@ -198,23 +200,24 @@ export default function User() {
         }
     };
 
-    const handleDeleteUser = (target: UserVO) => {
+    const handleUpdateEnableUser = (target: UserVO) => {
+
         Modal.confirm({
-            title: '确认删除用户',
-            content: `确定删除用户 "${target.username}" 吗？删除后无法恢复。`,
+            title: `确认${target.enabled ? '禁用' : '启用'}用户`,
+            content: `确定${target.enabled ? '禁用' : '启用'}用户 "${target.username}" 吗？${target.enabled ? '禁用后无法登录。' : ''}`,
             okButtonProps: { status: 'danger' },
             onOk: async () => {
                 try {
-                    const res = await deleteUser({ userId: target.userId });
+                    const res = await updateEnabled({ userId: target.userId, enabled: target.enabled ? false : true });
                     if (!res.data.success) {
-                        Message.error(res.data.msg || '删除用户失败');
+                        Message.error(res.data.msg || '操作失败');
                         return;
                     }
-                    Message.success('删除用户成功');
+                    Message.success('操作成功');
                     await fetchUsers();
                 } catch (err) {
-                    console.error('删除用户失败:', err);
-                    Message.error('删除用户失败');
+                    console.error('操作成功:', err);
+                    Message.error('操作失败');
                 }
             }
         });
@@ -230,6 +233,13 @@ export default function User() {
             dataIndex: 'role',
             render: (role: string) => (
                 <Tag color={role === 'ROLE_ADMIN' ? 'arcoblue' : 'green'}>{ROLE_LABEL[role] || role}</Tag>
+            )
+        },
+        {
+            title: '状态',
+            dataIndex: 'enabled',
+            render: (enabled: boolean) => (
+                <Tag color={enabled ? 'arcoblue' : 'grey'}>{enabled ? '正常' : '已禁用'}</Tag>
             )
         },
         {
@@ -249,10 +259,13 @@ export default function User() {
             align: 'center' as const,
             render: (_: unknown, record: UserVO) => {
                 const deletingSelf = user?.userId === record.userId;
+                const disableVisible = record.role !== 'ROLE_ADMIN'
                 return (
                     <Space size="small">
                         <Button
                             type="text"
+                            status="warning"
+                            icon = {<IconRefresh/>}
                             onClick={() => {
                                 setSelectedUser(record);
                                 resetPasswordForm.resetFields();
@@ -261,15 +274,17 @@ export default function User() {
                         >
                             重置密码
                         </Button>
-                        <Button
-                            type="text"
-                            status="danger"
-                            icon={<IconDelete />}
-                            disabled={deletingSelf}
-                            onClick={() => handleDeleteUser(record)}
-                        >
-                            删除
-                        </Button>
+                        {disableVisible && (
+                            <Button
+                                type="text"
+                                status={record.enabled ? "danger" : "default"}
+                                icon={record.enabled ? <IconStop  /> : <IconPlayArrow />}
+                                disabled={deletingSelf}
+                                onClick={() => handleUpdateEnableUser(record)}
+                            >
+                                {record.enabled ? '禁用' : '启用'}
+                            </Button>
+                        )}
                     </Space>
                 );
             }
