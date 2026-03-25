@@ -12,7 +12,7 @@ import { useLocation } from 'react-router-dom';
 import { useProjects } from '../context/useProjects';
 import { useParams } from 'react-router-dom';
 import { TaskVO, TreeData, TreeNodeVO, TreeNodeVOExtend } from '../types/task';
-import { createTreeNode, getTreeNode, deleteTreeNode } from '../api/task';
+import { createTreeNode, getTreeNode, deleteTreeNode, updateTreeNode } from '../api/task';
 import StudioTabs from './studio/StudioTabs';
 import StudioEditorContainer from './studio/StudioEditorContainer';
 import EmptyEditor from './studio/EmptyEditor';
@@ -41,7 +41,7 @@ export default function Studio() {
 
     // 树节点 新建,修改,删除,克隆等弹窗
     const [modalVisible, setModalVisible] = useState(false);
-    const [modalType, setModalType] = useState<'create_task' | 'create_folder' | 'edit_folder'
+    const [modalType, setModalType] = useState<'create_task' | 'create_folder' | 'edit_folder' | 'clone_task'
         | 'edit_task' | null>(null);
     const [inputValue, setInputValue] = useState('');
 
@@ -157,7 +157,7 @@ export default function Studio() {
         treeNodes.forEach(node => {
             const current = map.get(node.nodeId)!;
 
-            if (!node.parentNodeId) {
+            if (node.parentNodeId === '0') {
                 tree.push(current);
             } else {
                 const parent = map.get(node.parentNodeId);
@@ -200,7 +200,7 @@ export default function Studio() {
         const keys: string[] = []
 
         let node = treeNodes.find(n => n.nodeType === 'task' && n.taskId === taskId)
-        while (node?.parentNodeId) {
+        while (node?.parentNodeId !== '0') {
             const parent = treeNodes.find(n => n.nodeType === 'folder' && n.nodeId === node?.parentNodeId)
             if (!parent) break
 
@@ -239,7 +239,7 @@ export default function Studio() {
 
         // 计算根节点
         const rootFolderKeys = treeNodes
-            .filter(node => node.parentNodeId === null && node.nodeType === 'folder')
+            .filter(node => node.parentNodeId === "0" && node.nodeType === 'folder')
             .map(node => node.nodeId);
 
         if (rootFolderKeys.length > 0) {
@@ -337,7 +337,7 @@ export default function Studio() {
                 onCancel: () => {
                     return
                 }
-            });            
+            });
             // 关键
             return;
         }
@@ -351,7 +351,7 @@ export default function Studio() {
         const { nodeId, projectId, taskId, nodeName, hasChildren, nodeType, parentNodeId } = selectedNode;
 
         // 根目录
-        if (!parentNodeId) {
+        if (parentNodeId === '0') {
             return (
                 <Menu onClickMenuItem={() => setContextMenuVisible(false)}>
                     <Menu.Item key={'create_task'} onClick={() => {
@@ -384,12 +384,15 @@ export default function Studio() {
                         setInputValue('');
                         setModalVisible(true);
                     }}>新建目录</Menu.Item>
-                    <Menu.Item key={'edit'} onClick={() => {
+                    <Menu.Item key={'edit_folder'} onClick={() => {
                         setModalType('edit_folder');
                         setInputValue(selectedNode.nodeName);
                         setModalVisible(true);
-                    }}>编辑</Menu.Item>
-                    <Menu.Item key={'delete'} onClick={() => {
+                    }}>重命名</Menu.Item>
+
+                    <Menu.Item key={'move_folder'} onClick={() => null}>移动到</Menu.Item>
+
+                    <Menu.Item key={'delete_folder'} onClick={() => {
                         hadleDeleteTreeNode(selectedNode)
                     }}>删除</Menu.Item>
                 </Menu>
@@ -399,9 +402,18 @@ export default function Studio() {
         // 任务
         return (
             <Menu onClickMenuItem={() => setContextMenuVisible(false)}>
-                <Menu.Item key={'edit'} onClick={() => null}>编辑</Menu.Item>
-                <Menu.Item key={'clone'} onClick={() => null}>克隆</Menu.Item>
-                <Menu.Item key={'delete'} onClick={() => { hadleDeleteTreeNode(selectedNode) }}>
+                <Menu.Item key={'edit_task'} onClick={() => {
+                    setModalType('edit_task');
+                    setInputValue(selectedNode.nodeName);
+                    setModalVisible(true);
+                }}>重命名</Menu.Item>
+                <Menu.Item key={'move_task'} onClick={() => null}>移动到</Menu.Item>
+                <Menu.Item key={'clone_task'} onClick={() => {
+                    setModalType('clone_task');
+                    setInputValue(selectedNode.nodeName + '_copy');
+                    setModalVisible(true);
+                }}>克隆</Menu.Item>
+                <Menu.Item key={'delete_task'} onClick={() => { hadleDeleteTreeNode(selectedNode) }}>
                     删除</Menu.Item>
             </Menu>
         );
@@ -409,7 +421,7 @@ export default function Studio() {
 
     // 删除节点
     const hadleDeleteTreeNode = (selected: TreeNodeVOExtend) => {
-        if (selected.parentNodeId == null) {
+        if (selected.parentNodeId === "0") {
             Message.warning('根节点不能删除');
             return
         }
@@ -520,6 +532,13 @@ export default function Studio() {
             return;
         }
 
+        if (modalType === "edit_folder" || modalType === "edit_task") {
+            if (selectedNode?.nodeName === inputValue.trim()) {
+                Message.warning('名称没有变化')
+                return
+            }
+        }
+
         if (modalType === 'create_task' || modalType === 'edit_task') {
             const isValid = /^[a-zA-Z0-9_]{1,20}$/.test(inputValue.trim());
             if (!isValid) {
@@ -536,11 +555,11 @@ export default function Studio() {
             Message.error('必须在一个目录下创建')
             return
         }
-        const parentNodeId = selectedNode.nodeId
 
         try {
             let res;
             if (modalType === 'create_task') {
+                const parentNodeId = selectedNode.nodeId
                 res = await createTreeNode({
                     projectId: projectId,
                     parentNodeId: parentNodeId,
@@ -548,25 +567,39 @@ export default function Studio() {
                     nodeType: 'task',
                 });
             } else if (modalType === 'create_folder') {
+                const parentNodeId = selectedNode.nodeId
                 res = await createTreeNode({
                     projectId: projectId,
                     parentNodeId: parentNodeId,
                     nodeName: inputValue.trim(),
                     nodeType: 'folder',
                 });
-            }
-
-            if (!res?.data.success) {
-                Message.error(res?.data?.msg || '失败');
+            } else if (modalType === 'edit_folder' || modalType === 'edit_task') {
+                // 重命名 folder
+                res = await updateTreeNode({
+                    nodeId: selectedNode.nodeId,
+                    projectId: selectedNode.projectId,
+                    nodeType: selectedNode.nodeType,
+                    taskId: selectedNode.taskId,
+                    nodeName: inputValue.trim()
+                })
+            } else if (modalType === 'clone_task') {
+                // todo 
+                Message.info("待实现")
                 return
             }
 
-            Message.success('成功');
+            if (!res?.data.success) {
+                Message.error(res?.data?.msg || '操作失败');
+                return
+            }
+
+            Message.success('操作成功');
             setModalVisible(false);
             await fetchTreeNodes(projectId);
         } catch (err) {
-            console.error('失败:', err);
-            Message.error('失败，请重试');
+            console.error('操作失败:', err);
+            Message.error('操作失败，请重试');
         }
     };
 
@@ -695,7 +728,9 @@ export default function Studio() {
                     modalType === 'create_task' ? '新建任务' :
                         modalType === 'create_folder' ? '新建目录' :
                             modalType === 'edit_folder' ? '编辑目录' :
-                                ''
+                                modalType === 'edit_task' ? '编辑任务' :
+                                    modalType === 'clone_task' ? '克隆任务' :
+                                        ''
                 }
                 visible={modalVisible}
                 onOk={handleModalOk}
@@ -704,14 +739,14 @@ export default function Studio() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                     <span>
                         {
-                            modalType === 'create_task' ? '任务名' :
+                            modalType === 'create_task' || modalType === 'edit_task' || modalType === 'clone_task' ? '任务名' :
                                 modalType === 'create_folder' || modalType === 'edit_folder' ? '目录名' :
                                     ''
                         }
                     </span>
                     <Input style={{ flex: 1, minWidth: 0 }}
                         placeholder={
-                            modalType === 'create_task' ? '仅支持字母、数字、下划线，最长20字符' :
+                            modalType === 'create_task' || modalType === 'edit_task' || modalType === 'clone_task' ? '仅支持字母、数字、下划线，最长30字符' :
                                 modalType === 'create_folder' || modalType === 'edit_folder' ? '目录名' :
                                     ''
                         }

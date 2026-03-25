@@ -9,6 +9,19 @@ export function createTreeNode(data: {
   return request.post('/api/task/createTreeNode', data)
 }
 
+// 前三个是条件
+export function updateTreeNode(data: {
+  nodeId: string
+  projectId: string
+  nodeType: string
+
+  taskId?: string
+  nodeName?: string     // 要更改的后的nodeName
+  parentNodeId?: string  // 更改后的parentNodeId
+}) {
+  return request.post('/api/task/updateTreeNode', data)
+}
+
 
 export function getTreeNode(projectId: string) {
   return request.get('/api/task/getTreeNode', { params: { projectId } })
