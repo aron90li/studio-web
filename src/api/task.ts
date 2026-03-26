@@ -56,3 +56,12 @@ export function updateTask(data: {
 }) {
   return request.post('/api/task/updateTask', data)
 }
+
+export function cloneTask(data: {
+  projectId: string
+  taskId: string // 被克隆的任务id
+  taskName: string // 克隆后的任务名字
+  parentNodeId: string // 要存放的目录
+}) {
+  return request.post('/api/task/cloneTask', data)
+}

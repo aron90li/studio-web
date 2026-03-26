@@ -12,7 +12,7 @@ import { useLocation } from 'react-router-dom';
 import { useProjects } from '../context/useProjects';
 import { useParams } from 'react-router-dom';
 import { TaskVO, TreeData, TreeNodeVO, TreeNodeVOExtend } from '../types/task';
-import { createTreeNode, getTreeNode, deleteTreeNode, updateTreeNode } from '../api/task';
+import { createTreeNode, getTreeNode, deleteTreeNode, updateTreeNode, cloneTask } from '../api/task';
 import StudioTabs from './studio/StudioTabs';
 import StudioEditorContainer from './studio/StudioEditorContainer';
 import EmptyEditor from './studio/EmptyEditor';
@@ -44,6 +44,11 @@ export default function Studio() {
     const [modalType, setModalType] = useState<'create_task' | 'create_folder' | 'edit_folder' | 'clone_task'
         | 'edit_task' | null>(null);
     const [inputValue, setInputValue] = useState('');
+
+    // 移动节点
+    const [moveModalVisible, setMoveModalVisible] = useState(false)
+    const [targetSelectedFolderNodeId, setTargetSelectedFolderNodeId] = useState<string>("");
+    const [targetSelectedFolderName, setTargetSelectedFolderName] = useState<string>("");
 
     // 树节点 折叠展开
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -155,6 +160,65 @@ export default function Studio() {
         });
 
         treeNodes.forEach(node => {
+            const current = map.get(node.nodeId)!;
+
+            if (node.parentNodeId === '0') {
+                tree.push(current);
+            } else {
+                const parent = map.get(node.parentNodeId);
+                parent?.children.push(current);
+            }
+        });
+
+        // 标记叶子节点
+        const markIsLeaf = (nodes: TreeData[]) => {
+            nodes.forEach(node => {
+                if (node.nodeType === 'folder') {
+                    node.isLeaf = node.children.length === 0;
+                } else {
+                    node.isLeaf = true;
+                }
+                // 递归子节点
+                if (node.children && node.children.length > 0) {
+                    markIsLeaf(node.children);
+                }
+            });
+        };
+        markIsLeaf(tree);
+
+        return tree;
+    }, [treeNodes]);
+
+    // 1.2'
+    const folderTreeData = useMemo(() => {
+        const map = new Map<string, TreeData>();
+        const tree: TreeData[] = [];
+
+        treeNodes.filter(n => n.nodeType === 'folder').forEach(node => {
+            const titleElement = (
+                <span style={{
+                    userSelect: 'none', display: 'block', width: '100%',
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden'
+                }}
+                >
+                    {node.nodeType === 'folder' ? <IconFolder style={{ marginRight: 6 }} /> : <IconFile style={{ marginRight: 6 }} />}
+                    {node.nodeName}
+                </span>
+            );
+
+            map.set(node.nodeId, {
+                ...node,
+
+                key: node.nodeId,
+                title: titleElement,
+                children: [],
+                icon: null,
+                isLeaf: false
+
+            });
+        });
+
+        treeNodes.filter(n => n.nodeType === 'folder').forEach(node => {
             const current = map.get(node.nodeId)!;
 
             if (node.parentNodeId === '0') {
@@ -389,9 +453,9 @@ export default function Studio() {
                         setInputValue(selectedNode.nodeName);
                         setModalVisible(true);
                     }}>重命名</Menu.Item>
-
-                    <Menu.Item key={'move_folder'} onClick={() => null}>移动到</Menu.Item>
-
+                    <Menu.Item key={'move_folder'} onClick={() => {
+                        setMoveModalVisible(true)
+                    }}>移动到</Menu.Item>
                     <Menu.Item key={'delete_folder'} onClick={() => {
                         hadleDeleteTreeNode(selectedNode)
                     }}>删除</Menu.Item>
@@ -407,19 +471,22 @@ export default function Studio() {
                     setInputValue(selectedNode.nodeName);
                     setModalVisible(true);
                 }}>重命名</Menu.Item>
-                <Menu.Item key={'move_task'} onClick={() => null}>移动到</Menu.Item>
+                <Menu.Item key={'move_task'} onClick={() => {
+                    setMoveModalVisible(true)
+                }}>移动到</Menu.Item>
                 <Menu.Item key={'clone_task'} onClick={() => {
                     setModalType('clone_task');
                     setInputValue(selectedNode.nodeName + '_copy');
                     setModalVisible(true);
                 }}>克隆</Menu.Item>
-                <Menu.Item key={'delete_task'} onClick={() => { hadleDeleteTreeNode(selectedNode) }}>
-                    删除</Menu.Item>
+                <Menu.Item key={'delete_task'} onClick={() => {
+                    hadleDeleteTreeNode(selectedNode)
+                }}>删除</Menu.Item>
             </Menu>
         );
     };
 
-    // 删除节点
+    // 右键菜单删除节点
     const hadleDeleteTreeNode = (selected: TreeNodeVOExtend) => {
         if (selected.parentNodeId === "0") {
             Message.warning('根节点不能删除');
@@ -525,7 +592,7 @@ export default function Studio() {
         return () => document.removeEventListener('click', handleClick);
     }, [contextMenuVisible]);
 
-    // 弹窗点击确定
+    // 右键菜单新建任务目录，编辑任务目录，克隆任务操作，弹窗点击确定
     const handleModalOk = async () => {
         if (!inputValue.trim()) {
             Message.warning('名称不能为空');
@@ -540,9 +607,9 @@ export default function Studio() {
         }
 
         if (modalType === 'create_task' || modalType === 'edit_task') {
-            const isValid = /^[a-zA-Z0-9_]{1,20}$/.test(inputValue.trim());
+            const isValid = /^[a-zA-Z0-9_]{1,30}$/.test(inputValue.trim());
             if (!isValid) {
-                Message.warning('只能包含字母、数字、下划线，长度1-20');
+                Message.warning('只能包含字母、数字、下划线，长度1-30');
                 return;
             }
         }
@@ -575,18 +642,25 @@ export default function Studio() {
                     nodeType: 'folder',
                 });
             } else if (modalType === 'edit_folder' || modalType === 'edit_task') {
-                // 重命名 folder
                 res = await updateTreeNode({
                     nodeId: selectedNode.nodeId,
                     projectId: selectedNode.projectId,
                     nodeType: selectedNode.nodeType,
                     taskId: selectedNode.taskId,
+
                     nodeName: inputValue.trim()
                 })
             } else if (modalType === 'clone_task') {
-                // todo 
-                Message.info("待实现")
-                return
+                if (!selectedNode.taskId) {
+                    Message.warning("选中的节点没有taskId")
+                    return
+                }
+                res = await cloneTask({
+                    projectId: projectId,
+                    taskId: selectedNode.taskId,
+                    taskName: inputValue.trim(),
+                    parentNodeId: selectedNode.parentNodeId
+                })
             }
 
             if (!res?.data.success) {
@@ -602,6 +676,45 @@ export default function Studio() {
             Message.error('操作失败，请重试');
         }
     };
+
+    const handleMoveModalOk = async () => {
+        if (!projectId) {
+            Message.error('项目id缺失');
+            return;
+        }
+        if (!selectedNode || !targetSelectedFolderNodeId) {
+            Message.error('没有选择移动节点，或没有选择目的目录')
+            return
+        } 
+
+        if (selectedNode.parentNodeId === targetSelectedFolderNodeId) {
+            Message.warning('节点已经在该目录下')
+            return
+        }
+
+        try {
+            const res = await updateTreeNode({
+                nodeId: selectedNode.nodeId,
+                projectId: selectedNode.projectId,
+                nodeType: selectedNode.nodeType,
+
+                parentNodeId: targetSelectedFolderNodeId
+            })
+            if (!res.data.success) {
+                Message.error(res.data.msg || '移动失败');
+                return
+            }
+            Message.success('移动成功');
+            setMoveModalVisible(false);
+            await fetchTreeNodes(projectId);
+        } catch (err) {
+            console.error("移动失败")
+            Message.error("移动失败")
+        } finally {
+            setTargetSelectedFolderNodeId("")
+            setTargetSelectedFolderName("")
+        }
+    }
 
     // 点击节点, 这里和右键分开, 跳转
     const handleSelect = (keys: string[], extra: {
@@ -633,6 +746,21 @@ export default function Studio() {
                 }
             });
         }
+    };
+
+    // 点击目录树节点
+    const handleMoveFolderSelect = (keys: string[], extra: {
+        selected: boolean; selectedNodes: NodeInstance[]; node: NodeInstance; e: Event
+    }) => {
+        if (!extra.node) return
+        if (!extra.node.props.dataRef) {
+            Message.error('节点数据异常')
+            return
+        }
+
+        const n: TreeDataType = extra.node.props.dataRef
+        setTargetSelectedFolderNodeId(n.nodeId);
+        setTargetSelectedFolderName(n.nodeName)
     };
 
     {/* 五、 taskEditor操作 *******************************/ }
@@ -759,6 +887,26 @@ export default function Studio() {
                     />
                 </div>
             </Modal>
+
+            <Modal
+                title={`移动节点 ${selectedNode?.nodeName} 到 ${targetSelectedFolderName}`}
+                visible={moveModalVisible}
+                onOk={handleMoveModalOk}
+                onCancel={() => {
+                    setMoveModalVisible(false);
+                    setTargetSelectedFolderNodeId("")
+                    setTargetSelectedFolderName("")
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+                    <Tree treeData={folderTreeData} blockNode
+                        onSelect={handleMoveFolderSelect}
+                        selectedKeys={[targetSelectedFolderNodeId]}
+                    />
+                </div>
+            </Modal>
+
+
 
 
         </Layout>
