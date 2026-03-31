@@ -33,7 +33,7 @@ export default function StudioTabs({
             style={{
                 width: '100%', overflow: 'hidden',
                 height: 35,
-                flexShrink: 0,  
+                flexShrink: 0,
             }}
 
         >
@@ -51,31 +51,27 @@ export default function StudioTabs({
                                         height: '100%',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        textAlign: 'center',
-                                        padding: '0 8px', // 可选：增加一点内边距更美观
+                                        justifyContent: 'flex-start',
+                                        padding: '0 0px', // 可选：增加一点内边距更美观
                                         boxSizing: 'border-box',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    {taskMap[id]}
-                                    {taskStateMap[id]?.dirty && (
-                                        <span style={{
-                                            display: 'inline-block',  // 行内块，方便控制尺寸
-                                            width: 6,                 // 红点直径
-                                            height: 6,                // 红点直径
-                                            borderRadius: '50%',      // 圆形
-                                            backgroundColor: '#f53f3f', // 红色（Arco 危险色）
-                                            marginLeft: 4,            // 和文字的间距
-                                            verticalAlign: 'middle',  // 垂直居中对齐文字
-                                            flexShrink: 0             // 防止挤压变形（关键）
-                                        }} />
-                                    )}
+
+                                    {taskStateMap[id]?.dirty && (<span style={{ 
+                                        color: '#f53f3f', 
+                                        marginRight: 2
+                                    }} >●</span>)}
+                                    <span style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        textAlign: 'left',
+                                        minWidth: 0, // 非常关键！允许 flex 子项收缩到内容宽度以下
+                                    }}>
+                                        {taskMap[id]}
+                                    </span>
                                 </div>
                             </Tooltip>
                         }

@@ -453,9 +453,6 @@ export default function Studio() {
                         setInputValue(selectedNode.nodeName);
                         setModalVisible(true);
                     }}>重命名</Menu.Item>
-                    <Menu.Item key={'move_folder'} onClick={() => {
-                        setMoveModalVisible(true)
-                    }}>移动到</Menu.Item>
                     <Menu.Item key={'delete_folder'} onClick={() => {
                         hadleDeleteTreeNode(selectedNode)
                     }}>删除</Menu.Item>
@@ -685,10 +682,15 @@ export default function Studio() {
         if (!selectedNode || !targetSelectedFolderNodeId) {
             Message.error('没有选择移动节点，或没有选择目的目录')
             return
-        } 
+        }
 
         if (selectedNode.parentNodeId === targetSelectedFolderNodeId) {
             Message.warning('节点已经在该目录下')
+            return
+        }
+
+        if (selectedNode.nodeId === targetSelectedFolderNodeId) {
+            Message.warning('不能移动自己到自己')
             return
         }
 
