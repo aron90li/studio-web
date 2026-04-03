@@ -1,0 +1,9 @@
+{
+    "bootstrapServers": "localhost:9092",
+    "securityProtocol": "SASL_PLAINTEXT",
+    "sasl": {
+        "mechanism": "SCRAM-SHA-512",
+        "username": "admin",
+        "password": "admin"
+    }
+}

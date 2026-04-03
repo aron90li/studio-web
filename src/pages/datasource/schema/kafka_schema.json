@@ -1,0 +1,204 @@
+{
+    "schema": {
+        "type": "object",
+        "required": [
+            "bootstrapServers",
+            "securityProtocol"
+        ],
+        "properties": {
+            "bootstrapServers": {
+                "type": "string",
+                "description": "Kafka 集群地址，多个用逗号分隔"
+            },
+            "securityProtocol": {
+                "type": "string",
+                "enum": [
+                    "PLAINTEXT",
+                    "SASL_PLAINTEXT",
+                    "SSL",
+                    "SASL_SSL"
+                ],
+                "default": "PLAINTEXT"
+            }
+        },
+        "oneOf": [
+            {
+                "title": "PLAINTEXT",
+                "properties": {
+                    "securityProtocol": {
+                        "const": "PLAINTEXT"
+                    }
+                }
+            },
+            {
+                "title": "SSL",
+                "required": [
+                    "ssl"
+                ],
+                "properties": {
+                    "securityProtocol": {
+                        "const": "SSL"
+                    },
+                    "ssl": {
+                        "type": "object",
+                        "required": [
+                            "trustStorePath",
+                            "trustStorePassword"
+                        ],
+                        "properties": {
+                            "trustStorePath": {
+                                "type": "string"
+                            },
+                            "trustStorePassword": {
+                                "type": "string"
+                            },
+                            "keyStorePath": {
+                                "type": "string"
+                            },
+                            "keyStorePassword": {
+                                "type": "string"
+                            },
+                            "keyPassword": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "title": "SASL_PLAINTEXT",
+                "required": [
+                    "sasl"
+                ],
+                "properties": {
+                    "securityProtocol": {
+                        "const": "SASL_PLAINTEXT"
+                    },
+                    "sasl": {
+                        "type": "object",
+                        "required": [
+                            "mechanism",
+                            "username",
+                            "password"
+                        ],
+                        "properties": {
+                            "mechanism": {
+                                "type": "string",
+                                "enum": [
+                                    "PLAIN",
+                                    "SCRAM-SHA-256",
+                                    "SCRAM-SHA-512",
+                                    "GSSAPI"
+                                ]
+                            },
+                            "username": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "title": "SASL_SSL",
+                "required": [
+                    "ssl",
+                    "sasl"
+                ],
+                "properties": {
+                    "securityProtocol": {
+                        "const": "SASL_SSL"
+                    },
+                    "ssl": {
+                        "type": "object",
+                        "required": [
+                            "trustStorePath",
+                            "trustStorePassword"
+                        ],
+                        "properties": {
+                            "trustStorePath": {
+                                "type": "string"
+                            },
+                            "trustStorePassword": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "sasl": {
+                        "type": "object",
+                        "required": [
+                            "mechanism",
+                            "username",
+                            "password"
+                        ],
+                        "properties": {
+                            "mechanism": {
+                                "type": "string",
+                                "enum": [
+                                    "PLAIN",
+                                    "SCRAM-SHA-256",
+                                    "SCRAM-SHA-512",
+                                    "GSSAPI"
+                                ]
+                            },
+                            "username": {
+                                "type": "string"
+                            },
+                            "password": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "uiSchema": {
+        "bootstrapServers": {
+            "ui:title": "Bootstrap Servers",
+            "ui:placeholder": "localhost:9092"
+        },
+        "securityProtocol": {
+            "ui:title": "认证协议",
+            "ui:widget": "select"
+        },
+        "ssl": {
+            "ui:title": "SSL 配置",
+            "trustStorePath": {
+                "ui:title": "TrustStore 路径",
+                "ui:placeholder": "/path/to/truststore.jks"
+            },
+            "trustStorePassword": {
+                "ui:title": "TrustStore 密码",
+                "ui:widget": "password"
+            },
+            "keyStorePath": {
+                "ui:title": "KeyStore 路径"
+            },
+            "keyStorePassword": {
+                "ui:title": "KeyStore 密码",
+                "ui:widget": "password"
+            },
+            "keyPassword": {
+                "ui:title": "Key 密码",
+                "ui:widget": "password"
+            }
+        },
+        "sasl": {
+            "ui:title": "SASL 配置",
+            "mechanism": {
+                "ui:title": "认证机制",
+                "ui:widget": "select"
+            },
+            "username": {
+                "ui:title": "用户名"
+            },
+            "password": {
+                "ui:title": "密码",
+                "ui:widget": "password"
+            }
+        }
+    }
+}

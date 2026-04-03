@@ -1,0 +1,37 @@
+{
+    "schema": {
+        "type": "object",
+        "required": [
+            "jdbcUrl",
+            "username",
+            "password"
+        ],
+        "properties": {
+            "jdbcUrl": {
+                "type": "string",
+                "description": "数据库地址"
+            },
+            "username": {
+                "type": "string",
+                "description": "用户名"
+            },
+            "password": {
+                "type": "string",
+                "description": "密码"
+            }
+        }
+    },
+    "uiSchema": {
+        "jdbcUrl": {
+            "ui:title": "jdbcUrl",
+            "ui:placeholder": "jdbc:mysql://localhost:3306/test_db"
+        },
+        "username": {
+            "ui:title": "用户名"
+        },
+        "password": {
+            "ui:title": "密码",
+            "ui:widget": "password"
+        }
+    }
+}
