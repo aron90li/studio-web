@@ -41,7 +41,8 @@ export default function Projects() {
     const [currentDetailProjectName, setCurrentDetailProjectName] = useState<string | null>(null);
 
     // 分页使用 todo
-    
+    const [projectPageCurrent, setProjectPageCurrent] = useState(1);
+    const [projectPageSize, setProjectPageSize] = useState(10);
 
     const userColumns: TableProps<UserVO>['columns'] = [
         {
@@ -103,9 +104,18 @@ export default function Projects() {
         setFilteredProjects(projects);
     }, [projects]);
 
+    // 分页使用
+    useEffect(() => {
+        const maxPage = Math.max(1, Math.ceil(filteredProjects.length / projectPageSize));
+        if (projectPageCurrent > maxPage) {
+            setProjectPageCurrent(maxPage);
+        }
+    }, [filteredProjects.length, projectPageCurrent, projectPageSize]);
+
     // 搜索逻辑：前端过滤
     const handleSearch = (value: string) => {
         setSearchTerm(value);
+        setProjectPageCurrent(1);
         if (!value) {
             setFilteredProjects(projects);
             return;
@@ -330,7 +340,21 @@ export default function Projects() {
                     data={filteredProjects}
                     loading={loading}
                     pagination={{
-                        pageSize: 10
+                        current: projectPageCurrent,
+                        pageSize: projectPageSize,
+                        total: filteredProjects.length,
+                        sizeCanChange: true,
+                        sizeOptions: [10, 20, 50, 100],
+                        pageSizeChangeResetCurrent: true,
+                        showTotal: true,
+                        onChange: (pageNumber, pageSize) => {
+                            setProjectPageCurrent(pageNumber);
+                            setProjectPageSize(pageSize);
+                        },
+                        onPageSizeChange: (size) => {
+                            setProjectPageSize(size);
+                            setProjectPageCurrent(1);
+                        }
                     }}
                     border={false}
                     rowKey="projectId"

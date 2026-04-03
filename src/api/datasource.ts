@@ -1,5 +1,5 @@
 import request from '../utils/request'
-import {parseDatasource, parseDatasourceType } from '../types/datasource'
+import { parseDatasource, parseDatasourceType } from '../types/datasource'
 
 // 返回DatasourceTypeVO[]
 export async function selectDatasourceType(typeCode?: string) {
@@ -45,6 +45,19 @@ export function updateDatasource<T = unknown>(data: {
   linkJson?: T;
 }) {
   return request.post('/api/datasource/updateDatasource', {
+    ...data,
+    linkJson: JSON.stringify(data.linkJson) // 关键
+  })
+}
+
+export function testConnection<T = unknown>(data: {
+  datasourceName?: string
+  description?: string
+  datasourceType: string
+  datasourceVersion?: string
+  linkJson: T
+}) {
+  return request.post('/api/datasource/testConnection', {
     ...data,
     linkJson: JSON.stringify(data.linkJson) // 关键
   })

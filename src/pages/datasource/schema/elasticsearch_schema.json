@@ -1,0 +1,68 @@
+{
+  "schema": {
+    "type": "object",
+    "required": ["hosts"],
+    "properties": {
+      "hosts": {
+        "type": "string",
+        "description": "ES 地址，多个用逗号分隔，例如 http://localhost:9200"
+      },
+      "username": {
+        "type": "string",
+        "description": "用户名（可选）"
+      },
+      "password": {
+        "type": "string",
+        "description": "密码（可选）"
+      },
+      "apiKey": {
+        "type": "string",
+        "description": "API Key（可选）"
+      },
+      "enableSSL": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+
+    "oneOf": [
+      {
+        "title": "无认证",
+        "properties": {
+          "username": { "maxLength": 0 },
+          "apiKey": { "maxLength": 0 }
+        }
+      },
+      {
+        "title": "Basic 认证",
+        "required": ["username", "password"]
+      },
+      {
+        "title": "API Key 认证",
+        "required": ["apiKey"]
+      }
+    ]
+  },
+
+  "uiSchema": {
+    "hosts": {
+      "ui:title": "Hosts",
+      "ui:placeholder": "http://localhost:9200"
+    },
+    "username": {
+      "ui:title": "用户名"
+    },
+    "password": {
+      "ui:title": "密码",
+      "ui:widget": "password"
+    },
+    "apiKey": {
+      "ui:title": "API Key",
+      "ui:widget": "password"
+    },
+    "enableSSL": {
+      "ui:title": "启用 SSL",
+      "ui:widget": "switch"
+    }
+  }
+}

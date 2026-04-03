@@ -17,6 +17,7 @@ interface DatasourceEditorDrawerProps {
   datasourceTypes: DatasourceTypeVO[]
   typeLoading: boolean
   submitting: boolean
+  testing: boolean
   initialDatasource?: DatasourceVO | null  // 包含 linkJson 对象
   onCancel: () => void
   onSubmit: (payload: DatasourceEditorSubmitPayload) => Promise<void>
@@ -49,6 +50,7 @@ export default function DatasourceEditorDrawer({
   datasourceTypes,
   typeLoading,
   submitting,
+  testing,
   initialDatasource,
   onCancel,
   onSubmit,
@@ -195,6 +197,36 @@ export default function DatasourceEditorDrawer({
     }
   }
 
+  const handleTest = async () => {
+    try {
+      const values = await form.validate()
+      const currentType = datasourceTypeMap.get(selectedTypeCode || values.datasourceType)
+      if (!currentType) {
+        Message.warning('请选择数据源类型')
+        return
+      }
+
+      const schemaPackage = resolveSchemaPackage(currentType.schemaJson)
+      const sanitizedLinkJson = sanitizeValueBySchema(schemaPackage.schema, linkJsonValue)
+      const errors = validateSchemaValue(schemaPackage.schema, schemaPackage.uiSchema, sanitizedLinkJson)
+      if (errors.length > 0) {
+        Message.warning(errors[0])
+        return
+      }
+
+      await onTest({
+        datasourceId: mode === 'edit' ? initialDatasource?.datasourceId : undefined,
+        datasourceName: values.datasourceName.trim(),
+        description: ensureString(values.description).trim(),
+        datasourceType: currentType.typeCode,
+        datasourceVersion: values.datasourceVersion.trim(),
+        linkJson: sanitizedLinkJson
+      })
+    } catch {
+
+    }
+  }
+
   return (
     <Drawer
       title={mode === 'edit' ? '编辑数据源' : '新建数据源'}
@@ -204,12 +236,17 @@ export default function DatasourceEditorDrawer({
       onCancel={onCancel}
       unmountOnExit
       footer={
-        <Space>
-          <Button onClick={onCancel}>取消</Button>
-          <Button type="primary" loading={submitting} onClick={handleOk}>
-            {mode === 'edit' ? '保存' : '创建'}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button type="text" loading={testing} onClick={handleTest} size="small">
+            测试连接
           </Button>
-        </Space>
+          <Space>
+            <Button onClick={onCancel}>取消</Button>
+            <Button type="primary" loading={submitting} onClick={handleOk}>
+              {mode === 'edit' ? '保存' : '创建'}
+            </Button>
+          </Space>
+        </div>
       }
     >
       <Form form={form} layout="vertical">
@@ -279,7 +316,7 @@ export default function DatasourceEditorDrawer({
           uiSchema={currentSchemaPackage.uiSchema}
           value={linkJsonValue}
           onChange={setLinkJsonValue}
-          disabled={submitting}
+          disabled={submitting || testing}
         />
       ) : (
         <Empty description="暂无可用数据源类型" />

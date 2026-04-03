@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Button, Card, Input, Message, Modal, Space, Table, Tag, Typography
 } from '@arco-design/web-react'
@@ -10,7 +10,8 @@ import {
   deleteDatasource,
   selectDatasource,
   selectDatasourceType,
-  updateDatasource
+  updateDatasource,
+  testConnection
 } from '../api/datasource'
 import { DatasourceTypeVO, DatasourceVO } from '../types/datasource'
 import DatasourceEditorDrawer, {
@@ -18,17 +19,21 @@ import DatasourceEditorDrawer, {
 } from './datasource/DatasourceEditorDrawer'
 
 const { Search } = Input
+const CONNECTION_CHECK_INTERVAL = 30 * 60 * 1000
 
 export default function Datasource() {
   const [datasourceList, setDatasourceList] = useState<DatasourceVO[]>([])
   const [datasourceTypes, setDatasourceTypes] = useState<DatasourceTypeVO[]>([])
+  const [connectionStatusMap, setConnectionStatusMap] = useState<Record<string, 'success' | 'failed'>>({})
   const [listLoading, setListLoading] = useState(false)
   const [typeLoading, setTypeLoading] = useState(false)
   const [drawerSubmitting, setDrawerSubmitting] = useState(false)
+  const [drawerTesting, setDrawerTesting] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [drawerVisible, setDrawerVisible] = useState(false)
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create')
   const [editingDatasource, setEditingDatasource] = useState<DatasourceVO | null>(null)
+  const connectionCheckTokenRef = useRef(0)
 
   const datasourceTypeNameMap = useMemo(() => {
     return new Map(datasourceTypes.map((item) => [item.typeCode, item.typeName || item.typeCode]))
@@ -64,6 +69,59 @@ export default function Datasource() {
     fetchDatasourceList()
     fetchDatasourceTypes()
   }, [fetchDatasourceList, fetchDatasourceTypes])
+
+  // 检测数据源连接状态，结果保存在 connectionStatusMap 中
+  const checkDatasourceConnections = useCallback(async (list: DatasourceVO[]) => {
+    if (!list.length) {
+      setConnectionStatusMap({})
+      return
+    }
+
+    const currentToken = ++connectionCheckTokenRef.current
+    for (const item of list) {
+      try {
+        const res = await testConnection({
+          datasourceName: item.datasourceName,
+          description: item.description,
+          datasourceType: item.datasourceType,
+          datasourceVersion: item.datasourceVersion,
+          linkJson: item.linkJson
+        })
+
+        if (currentToken !== connectionCheckTokenRef.current) return
+
+        setConnectionStatusMap(prev => ({
+          ...prev,
+          [item.datasourceId]: res.data.success ? 'success' : 'failed'
+        }))
+      } catch (error) {
+        console.error(`检测数据源连接失败: ${item.datasourceName}`, error)
+        if (currentToken !== connectionCheckTokenRef.current) return
+        setConnectionStatusMap(prev => ({
+          ...prev,
+          [item.datasourceId]: 'failed'
+        }))
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    checkDatasourceConnections(datasourceList)
+  }, [datasourceList, checkDatasourceConnections])
+
+  useEffect(() => {
+    if (!datasourceList.length) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      checkDatasourceConnections(datasourceList)
+    }, CONNECTION_CHECK_INTERVAL)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [datasourceList, checkDatasourceConnections])
 
   const ensureDatasourceTypeLoaded = useCallback(
     async (typeCode: string) => {
@@ -145,8 +203,27 @@ export default function Datasource() {
   }
 
   const handleOnTest = async (payload: DatasourceEditorSubmitPayload) => {
-    // todo: 实现测试连接的逻辑，调用后端接口进行连接测试
-    Message.info('测试连接功能尚未实现')
+    setDrawerTesting(true)
+    try {
+      const res = await testConnection({
+        datasourceName: payload.datasourceName,
+        description: payload.description,
+        datasourceType: payload.datasourceType,
+        datasourceVersion: payload.datasourceVersion,
+        linkJson: payload.linkJson
+      })
+      if (!res.data.success) {
+        Message.error(res.data.msg || '测试连接失败')
+        return
+      }
+
+      Message.success('测试连接成功')
+    } catch (error) {
+      console.error('测试连接失败:', error)
+      Message.error('测试连接失败')
+    } finally {
+      setDrawerTesting(false)
+    }
   }
   // //参数是：(payload: DatasourceEditorSubmitPayload)，从Drawer传过来，里面的linkJson是已经解析好的对象了
   const handleDrawerSubmit = async (payload: DatasourceEditorSubmitPayload) => {
@@ -244,26 +321,52 @@ export default function Datasource() {
       key: 'action',
       width: 180,
       align: 'center',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<IconEdit />}
-            style={{ color: '#165DFF' }}
-            onClick={() => openEditDrawer(record)}
-          >
-            编辑
-          </Button>
-          <Button
-            type="text"
-            icon={<IconDelete />}
-            style={{ color: '#F53F3F' }}
-            onClick={() => handleDeleteDatasource(record)}
-          >
-            删除
-          </Button>
-        </Space>
-      )
+      render: (_, record) => {
+        const connectionStatus = connectionStatusMap[record.datasourceId]
+        const connectionColor =
+          connectionStatus === 'success'
+            ? '#00B42A'
+            : connectionStatus === 'failed'
+              ? '#F53F3F'
+              : '#86909C'
+
+        return (
+          <Space size="small">
+            <span
+              title={
+                connectionStatus === 'success'
+                  ? '连接成功'
+                  : connectionStatus === 'failed'
+                    ? '连接失败'
+                    : '连接检测中'
+              }
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: connectionColor,
+                display: 'inline-block'
+              }}
+            />
+            <Button
+              type="text"
+              icon={<IconEdit />}
+              style={{ color: '#165DFF' }}
+              onClick={() => openEditDrawer(record)}
+            >
+              编辑
+            </Button>
+            <Button
+              type="text"
+              icon={<IconDelete />}
+              style={{ color: '#F53F3F' }}
+              onClick={() => handleDeleteDatasource(record)}
+            >
+              删除
+            </Button>
+          </Space>
+        )
+      }
     }
   ]
 
@@ -310,16 +413,17 @@ export default function Datasource() {
         datasourceTypes={datasourceTypes} // 包含所有的类型，Drawer里需要根据editingDatasource.datasourceType来找到对应的schemaJson
         typeLoading={typeLoading}
         submitting={drawerSubmitting}
+        testing={drawerTesting}
         initialDatasource={editingDatasource} // 包含linkJson对象，Drawer里直接用editingDatasource.linkJson来渲染表单
         onCancel={() => {
-          if (drawerSubmitting) {
+          if (drawerSubmitting || drawerTesting) {
             return
           }
           setDrawerVisible(false)
           setEditingDatasource(null)
         }}
         onSubmit={handleDrawerSubmit}  //参数是：(payload: DatasourceEditorSubmitPayload)，从Drawer传过来，里面的linkJson是已经解析好的对象了
-        onTest= {handleOnTest}
+        onTest={handleOnTest}
       />
     </>
   )
