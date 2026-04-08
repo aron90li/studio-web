@@ -51,7 +51,6 @@ export function updateTask(data: {
   taskSource?: string
   taskSide?: string
   taskSink?: string
-  deleted?: number
   publishStatus?: number
 }) {
   return request.post('/api/task/updateTask', data)

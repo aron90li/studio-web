@@ -4,7 +4,7 @@ import { Message } from '@arco-design/web-react'
 
 const request = axios.create({
   baseURL: 'http://localhost:8001', // 改成你的后端地址 http://localhost:8001 nginx配置写成/api
-  timeout: 15000
+  // timeout: 15000
 })
 
 request.interceptors.request.use(config => {

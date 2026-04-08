@@ -1,17 +1,16 @@
-import { useEffect, useState, useRef } from 'react';
-import {
-    Drawer, Descriptions, Spin, Message, Empty, Tag,
-    Tabs, Table, Button, Input, Modal, Space
-} from '@arco-design/web-react';
-import { IconPlus, IconDelete, IconSave, IconUserAdd } from '@arco-design/web-react/icon';
+import { useEffect, useRef, useState } from 'react';
+import { Drawer, Spin, Message, Tag, Tabs, Table, Button, Input, Modal, Space, Select } from '@arco-design/web-react';
+import { IconDelete, IconSave } from '@arco-design/web-react/icon';
 import type { TableProps } from '@arco-design/web-react';
 import { getProjectDetail, createOrUpdateProjectDetail } from '../../api/project';
-import { ProjectDetailVO } from '../../types/project';
+import type { ProjectDetailVO } from '../../types/project';
 
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import loader from '@monaco-editor/loader';
-// 确保配置了 loader，如果主项目已配置可省略
+import type { DatasourceVO } from '../../types/datasource';
+import { selectDatasource } from '../../api/datasource';
+
 loader.config({ monaco });
 
 interface ProjectDetailPanelProps {
@@ -21,114 +20,145 @@ interface ProjectDetailPanelProps {
     onClose: () => void;
 }
 
-// 定义 Tab 类型
-type TabKey = 'env_template' | 'alert_tel' | 'alert_yx';
+type TabKey = 'env_template' | 'alert_tel' | 'alert_yx' | 'datasource';
 
-// 定义内部数据结构, 每个tab一个数据
 interface TabData {
     loading: boolean;
-    fetched: boolean; // 是否已加载过
-    stringValue: string; // 用于 SQL 展示的字符串
-    listValue: string[]; // 用于电话/邮箱展示的数组
+    fetched: boolean;
+    stringValue: string;
+    listValue: string[];
 }
 
+const createInitialTabState = (): Record<TabKey, TabData> => ({
+    env_template: { loading: false, fetched: false, stringValue: '', listValue: [] },
+    alert_tel: { loading: false, fetched: false, stringValue: '', listValue: [] },
+    alert_yx: { loading: false, fetched: false, stringValue: '', listValue: [] },
+    datasource: { loading: false, fetched: false, stringValue: '', listValue: [] }
+});
+
+const typeMap: Record<TabKey, string> = {
+    env_template: 'env_template',
+    alert_tel: 'alert_tel',
+    alert_yx: 'alert_yx',
+    datasource: 'datasource'
+};
+
+function parseListValue(raw: string): string[] {
+    if (!raw) {
+        return [];
+    }
+
+    try {
+        if (raw.startsWith('[')) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return parsed.map((item) => String(item)).filter(Boolean);
+            }
+        }
+    } catch {
+        // fallthrough
+    }
+
+    if (raw.includes(',') || raw.includes(';')) {
+        return raw
+            .split(/[,;]/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+
+    return [raw];
+}
 
 export default function ProjectDetailPanel({ visible, projectId, projectName, onClose }: ProjectDetailPanelProps) {
-    const initialTabState: Record<TabKey, TabData> = {
-        env_template: { loading: false, fetched: false, stringValue: '', listValue: [] },
-        alert_tel: { loading: false, fetched: false, stringValue: '', listValue: [] },
-        alert_yx: { loading: false, fetched: false, stringValue: '', listValue: [] },
-    };
-
-    const typeMap: Record<TabKey, string> = {
-        env_template: 'env_template',
-        alert_tel: 'alert_tel',
-        alert_yx: 'alert_yx'
-    };
-
     const [activeTab, setActiveTab] = useState<TabKey>('env_template');
-    const [tabData, setTabData] = useState<Record<TabKey, TabData>>(initialTabState);
+    const [tabData, setTabData] = useState<Record<TabKey, TabData>>(createInitialTabState());
 
-    // 用于添加电话/邮箱的输入框状态
     const [inputValue, setInputValue] = useState('');
-
-    const [envDirty, setEnvDirty] = useState<boolean>(false)
+    const [envDirty, setEnvDirty] = useState<boolean>(false);
     const envContentRef = useRef<string>('');
 
-    // 懒加载逻辑：当 Tab 切换或面板打开时，如果当前 Tab 未加载，则请求
+    // 数据源
+    const [datasourceList, setDatasourceList] = useState<DatasourceVO[]>([]);
+    const [selectedDatasourceId, setSelectedDatasourceId] = useState<string | undefined>(undefined);
+
     useEffect(() => {
         if (visible && projectId) {
             if (!tabData[activeTab].fetched && !tabData[activeTab].loading) {
                 fetchTabData(activeTab);
             }
-        } else {
-            // 关闭时重置所有状态（可选，如果希望下次打开重新加载）
-            if (!visible) {
-                setTabData(initialTabState);
-                setActiveTab('env_template');
+            return;
+        }
 
-                setEnvDirty(false); // 关闭时重置 dirty 状态
-                envContentRef.current = ''; // 清空 ref
-            }
+        if (!visible) {
+            setTabData(createInitialTabState());
+            setActiveTab('env_template');
+            setEnvDirty(false);
+            envContentRef.current = '';
+            setInputValue('');
+            setDatasourceList([]);
+            setSelectedDatasourceId(undefined);
         }
     }, [visible, projectId, activeTab]);
 
     const fetchTabData = async (type: TabKey) => {
         if (!projectId) return;
 
-        // 更新 loading 状态
-        setTabData(prev => ({
+        setTabData((prev) => ({
             ...prev,
             [type]: { ...prev[type], loading: true, fetched: true }
         }));
 
         try {
+            if (type === 'datasource') {
+                try {
+                    const allDatasource = await selectDatasource();
+                    setDatasourceList(allDatasource || []);
+                } catch (error) {
+                    console.error('获取数据源列表失败:', error);
+                    Message.error('获取数据源列表失败');
+                }
+            }
+
             const res = await getProjectDetail(projectId, typeMap[type]);
 
-            if (res.data.success) {
-                const list: ProjectDetailVO[] = res.data.data || [];
-                let stringValue = '';
-                let listValue: string[] = [];
+            if (!res.data.success) {
+                Message.error(res.data.msg || '获取详情失败');
+                setTabData((prev) => ({ ...prev, [type]: { ...prev[type], loading: false } }));
+                return;
+            }
 
-                if (list.length > 0) {
-                    const detailVO = list[0];
-                    stringValue = detailVO.detailValue || ''
+            // 返回数组，最多一个值
+            const list: ProjectDetailVO[] = res.data.data || [];
+            let stringValue = '';
+            let listValue: string[] = [];
 
-                    if (type === 'env_template') {
-                        envContentRef.current = stringValue;
-                    }
+            if (list.length > 0) {
+                stringValue = list[0].detailValue || '';
 
-                    // 尝试解析为数组 (针对电话和邮箱)
-                    try {
-                        if (stringValue.startsWith('[')) {
-                            listValue = JSON.parse(stringValue);
-                        } else if (stringValue.includes(',') || stringValue.includes(';')) {
-                            listValue = stringValue.split(/[,;]/).map(s => s.trim()).filter(s => s);
-                        } else if (stringValue) {
-                            listValue = [stringValue];
-                        }
-                    } catch (e) {
-                        listValue = stringValue ? [stringValue] : [];
-                    }
+                if (type === 'env_template') {
+                    envContentRef.current = stringValue;
                 }
 
-                setTabData(prev => ({
-                    ...prev,
-                    [type]: {
-                        ...prev[type],
-                        loading: false,
-                        stringValue: stringValue,
-                        listValue: listValue
-                    }
-                }));
-            } else {
-                Message.error(res.data.msg || '获取详情失败');
-                setTabData(prev => ({ ...prev, [type]: { ...prev[type], loading: false } }));
+                listValue = parseListValue(stringValue);
+
+                if (type === 'datasource') {
+                    listValue = listValue.map((item) => String(item)).filter(Boolean);
+                }
             }
-        } catch (err) {
-            console.error('获取详情异常:', err);
+
+            setTabData((prev) => ({
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    loading: false,
+                    stringValue,
+                    listValue
+                }
+            }));
+        } catch (error) {
+            console.error('获取详情异常:', error);
             Message.error('网络异常');
-            setTabData(prev => ({ ...prev, [type]: { ...prev[type], loading: false } }));
+            setTabData((prev) => ({ ...prev, [type]: { ...prev[type], loading: false } }));
         }
     };
 
@@ -145,30 +175,26 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
 
             if (res.data.success) {
                 Message.success('保存成功');
-
-                // 更新本地状态，使其成为“干净”状态
-                setTabData(prev => ({
+                setTabData((prev) => ({
                     ...prev,
                     env_template: {
                         ...prev.env_template,
-                        stringValue: newContent // listValue不更新，因为没有用到                        
+                        stringValue: newContent
                     }
                 }));
-                setEnvDirty(false); // 重置 dirty 标志
+                setEnvDirty(false);
             } else {
                 Message.error(res.data.msg || '保存失败');
             }
-        } catch (err) {
-            console.error('保存失败:', err);
+        } catch (error) {
+            console.error('保存失败:', error);
             Message.error('保存失败');
         }
     };
 
-    // 保存单个 Tab 的数据 (添加/删除后调用)
     const saveTabData = async (type: TabKey, newList: string[]) => {
         if (!projectId) return;
 
-        // 将数组转回字符串存储 (JSON 格式)  [134,123]
         const newValue = JSON.stringify(newList);
 
         try {
@@ -180,9 +206,7 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
 
             if (res.data.success) {
                 Message.success('保存成功');
-
-                // 更新本地
-                setTabData(prev => ({
+                setTabData((prev) => ({
                     ...prev,
                     [type]: {
                         ...prev[type],
@@ -190,18 +214,81 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
                         listValue: newList
                     }
                 }));
-                setInputValue('');
+
+                if (type === 'datasource') {
+                    setSelectedDatasourceId(undefined);
+                } else {
+                    setInputValue('');
+                }
             } else {
                 Message.error(res.data.msg || '保存失败');
             }
-        } catch (err) {
-            console.error('保存失败:', err);
+        } catch (error) {
+            console.error('保存失败:', error);
             Message.error('保存失败');
         }
     };
 
+    const handleAddItem = (type: TabKey) => {
+        if (!inputValue.trim()) {
+            Message.warning('请输入内容');
+            return;
+        }
 
-    // 1. 渲染 环境参数 Tab
+        const currentList = tabData[type].listValue;
+        const targetValue = inputValue.trim();
+        if (currentList.includes(targetValue)) {
+            Message.warning('该内容已存在');
+            return;
+        }
+
+        saveTabData(type, [...currentList, targetValue]);
+    };
+
+    const handleDeleteItem = (type: TabKey, index: number) => {
+        Modal.confirm({
+            title: '确认删除',
+            content: '确定要删除该项吗？',
+            onOk: () => {
+                const currentList = tabData[type].listValue;
+                saveTabData(
+                    type,
+                    currentList.filter((_, i) => i !== index)
+                );
+            }
+        });
+    };
+
+    // 数据源
+    const handleAddDatasource = () => {
+        if (!selectedDatasourceId) {
+            Message.warning('请选择数据源');
+            return;
+        }
+
+        const currentIds = tabData.datasource.listValue;
+        if (currentIds.includes(selectedDatasourceId)) {
+            Message.warning('该数据源已存在');
+            return;
+        }
+
+        saveTabData('datasource', [...currentIds, selectedDatasourceId]);
+    };
+
+    const handleDeleteDatasource = (datasourceId: string) => {
+        Modal.confirm({
+            title: '确认删除',
+            content: '确定要删除该数据源吗？',
+            onOk: () => {
+                const currentIds = tabData.datasource.listValue;
+                saveTabData(
+                    'datasource',
+                    currentIds.filter((id) => id !== datasourceId)
+                );
+            }
+        });
+    };
+
     const renderStringContent = () => {
         const data = tabData.env_template;
         if (data.loading) return <div style={{ padding: 20 }}><Spin /></div>;
@@ -210,10 +297,9 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
             <div>
                 <Space style={{ marginBottom: 8, width: '100%', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 12, color: '#86909c' }}>
-                        {envDirty ? <span style={{ color: '#f53f3f' }}>● 内容已修改，请保存</span> : '当前为最新版本'}
+                        {envDirty ? <span style={{ color: '#f53f3f' }}>内容已修改，请保存</span> : '当前为最新版本'}
                     </span>
 
-                    {/* 更新按钮 */}
                     <Button
                         type="primary"
                         size="mini"
@@ -225,30 +311,28 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
                         更新
                     </Button>
                 </Space>
-                < div style={{ border: "1px solid #eee" }}>
+
+                <div style={{ border: '1px solid #eee' }}>
                     <style>
                         {`
-                            .monaco-editor .find-widget {
-                                right: 50px !important;
-                            }
-                        `}
+              .monaco-editor .find-widget {
+                right: 50px !important;
+              }
+            `}
                     </style>
                     <Editor
                         height="600px"
                         key={projectId}
                         defaultLanguage="sql"
                         theme="light"
-                        defaultValue={data.stringValue} // 初始值
+                        defaultValue={data.stringValue}
                         options={{
                             minimap: { enabled: false },
                             fontSize: 14,
                             automaticLayout: true,
-                            // scrollBeyondLastLine: false,
-
                             padding: { top: 3 }
                         }}
                         onChange={(value) => {
-                            // 只更新 Ref 和 Dirty 状态，不触发复杂的重渲染逻辑
                             envContentRef.current = value || '';
                             setEnvDirty(true);
                         }}
@@ -258,7 +342,6 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
         );
     };
 
-    // 2. 渲染列表 Tab (电话/邮箱)
     const renderListContent = (type: TabKey, title: string, placeholder: string) => {
         const data = tabData[type];
         if (data.loading) return <div style={{ padding: 20 }}><Spin /></div>;
@@ -271,7 +354,7 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
                 render: (_, __, index) => index + 1
             },
             {
-                title: title,
+                title,
                 dataIndex: 'value',
                 render: (val: string) => <Tag color="blue">{val}</Tag>
             },
@@ -280,7 +363,7 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
                 key: 'action',
                 width: 80,
                 align: 'center',
-                render: (_: any, record: string, index: number) => (
+                render: (_: any, __: string, index: number) => (
                     <Button
                         type="text"
                         icon={<IconDelete />}
@@ -293,13 +376,11 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
             }
         ];
 
-        // 构建表格数据源
-        const dataSource: { key: number; value: string; index: number }[] =
-            data.listValue.map((val, idx) => ({
-                key: idx,
-                value: val,
-                index: idx
-            }));
+        const dataSource: { key: number; value: string; index: number }[] = data.listValue.map((val, idx) => ({
+            key: idx,
+            value: val,
+            index: idx
+        }));
 
         return (
             <div>
@@ -311,14 +392,15 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
                         style={{ width: 300 }}
                         onPressEnter={() => handleAddItem(type)}
                     />
-                    <Button type="primary" size="small" onClick={() => handleAddItem(type)}>添加</Button>
+                    <Button type="primary" size="small" onClick={() => handleAddItem(type)}>
+                        添加
+                    </Button>
                 </Space>
-
 
                 <Table
                     columns={columns}
                     data={dataSource}
-                    pagination={{ pageSize: 5 }}
+                    pagination={{ pageSize: 10 }}
                     border={false}
                     rowKey="key"
                 />
@@ -326,61 +408,115 @@ export default function ProjectDetailPanel({ visible, projectId, projectName, on
         );
     };
 
-    // --- 事件处理 ---
-    const handleAddItem = (type: TabKey) => {
-        if (!inputValue.trim()) {
-            Message.warning('请输入内容');
-            return;
-        }
-        const currentList = tabData[type].listValue;
-        if (currentList.includes(inputValue.trim())) {
-            Message.warning('该内容已存在');
-            return;
-        }
-        const newList = [...currentList, inputValue.trim()];
-        saveTabData(type, newList);
-    };
+    const renderDatasourceContent = () => {
+        const data = tabData.datasource;
+        if (data.loading) return <div style={{ padding: 20 }}><Spin /></div>;
 
-    const handleDeleteItem = (type: TabKey, index: number) => {
-        Modal.confirm({
-            title: '确认删除',
-            content: '确定要删除该项吗？',
-            onOk: () => {
-                const currentList = tabData[type].listValue;
-                const newList = currentList.filter((_, i) => i !== index);
-                saveTabData(type, newList);
+        const datasourceMap = new Map(datasourceList.map((item) => [item.datasourceId, item]));
+        const dataSource = data.listValue
+            .map((datasourceId) => datasourceMap.get(datasourceId))
+            .filter((item): item is DatasourceVO => Boolean(item))
+            .map((item) => ({
+                key: item.datasourceId,
+                datasourceId: item.datasourceId,
+                datasourceName: item.datasourceName,
+                datasourceType: item.datasourceType
+            }));
+
+        const columns: TableProps<any>['columns'] = [
+            {
+                title: '序号',
+                dataIndex: 'index',
+                width: 60,
+                render: (_, __, index) => index + 1
+            },
+            {
+                title: '数据源名称',
+                dataIndex: 'datasourceName'
+            },
+            {
+                title: '数据源类型',
+                dataIndex: 'datasourceType',
+                render: (value: string) => <Tag color="arcoblue">{value}</Tag>
+            },
+            {
+                title: '操作',
+                key: 'action',
+                width: 80,
+                align: 'center',
+                render: (_: any, record: { datasourceId: string }) => (
+                    <Button
+                        type="text"
+                        icon={<IconDelete />}
+                        style={{ color: '#F53F3F' }}
+                        onClick={() => handleDeleteDatasource(record.datasourceId)}
+                    >
+                        删除
+                    </Button>
+                )
             }
-        });
+        ];
+
+        return (
+            <div>
+                <Space style={{ marginBottom: 16, width: '100%' }}>
+                    <Select
+                        placeholder="请选择数据源"
+                        value={selectedDatasourceId}
+                        style={{ width: 320 }}
+                        allowClear
+                        showSearch
+                        filterOption={(inputValue, option: any) => {
+                            const label = (option?.label || option?.props?.children || '').toLowerCase();
+                            return label.includes(inputValue.toLowerCase());
+                        }}
+                        options={datasourceList.map((item) => ({
+                            label: item.datasourceName,
+                            value: item.datasourceId
+                        }))}
+                        onChange={(value) => setSelectedDatasourceId(value as string)}
+                    />
+                    <Button type="primary" size="small" onClick={handleAddDatasource}>
+                        添加
+                    </Button>
+                </Space>
+
+                <Table
+                    columns={columns}
+                    data={dataSource}
+                    pagination={{ pageSize: 10 }}
+                    border={false}
+                    rowKey="key"
+                />
+            </div>
+        );
     };
 
     return (
         <Drawer
-            title={"项目详情: " + projectName}
+            title={`项目详情: ${projectName || ''}`}
             visible={visible}
             placement="right"
             width="50%"
             onCancel={onClose}
             footer={null}
-            closable={true}
+            closable
         >
-            <Tabs
-                activeTab={activeTab}
-                onChange={(key) => setActiveTab(key as TabKey)}
-                type="rounded"
-            >
-                <Tabs.TabPane
-                    key="env_template" title="参数模板">
+            <Tabs activeTab={activeTab} onChange={(key) => setActiveTab(key as TabKey)} type="rounded">
+                <Tabs.TabPane key="env_template" title="参数模板">
                     {renderStringContent()}
                 </Tabs.TabPane>
 
-                <Tabs.TabPane
-                    key="alert_tel" title="告警电话">
-                    {renderListContent('alert_tel', '电话号码', '请输入手机号码')}
+                <Tabs.TabPane key="alert_tel" title="告警电话">
+                    {renderListContent('alert_tel', '电话号码', '请输入手机号')}
                 </Tabs.TabPane>
 
-                <Tabs.TabPane
-                    key="alert_yx" title="告警原心">
-                    {renderListContent('alert_yx', '原心号', '请输入原心号')}
+                <Tabs.TabPane key="alert_yx" title="告警邮箱">
+                    {renderListContent('alert_yx', '邮箱号', '请输入邮箱')}
+                </Tabs.TabPane>
+
+                <Tabs.TabPane key="datasource" title="数据源">
+                    {renderDatasourceContent()}
                 </Tabs.TabPane>
             </Tabs>
         </Drawer>
