@@ -1,6 +1,7 @@
 import { useContext } from 'react'
 import { Navigate } from 'react-router-dom'
 import { UserContext } from '../context/UserContext'
+import {Message} from '@arco-design/web-react'
 
 export default function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useContext(UserContext)
@@ -9,7 +10,10 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
   // 它很快就会被设置成false，不管用户是否成功获取
   if (loading) return null
 
-  if (!user) return <Navigate to="/" replace />
+  if (!user) {
+    Message.error('请先登录')
+    return <Navigate to="/" replace />
+  }
 
   return children
 }

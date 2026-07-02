@@ -23,7 +23,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, []) // 依赖是空数组，因为 fetchProjects 不依赖任何外部变量或状态，所以它只需要在组件挂载时创建一次。引用不会变
 
   /**
    * 关键点
@@ -34,18 +34,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     // 可选：如果你希望一登录就加载项目，打开这行
-    // fetchProjects()
-  }, [fetchProjects]) // 
+    fetchProjects()
+  }, [fetchProjects]) // 因为fetchProjects的依赖是空数组，所以这里的依赖也可以是空数组
 
   return (
-    <ProjectContext.Provider
-      value={{
-        projects,
-        loading,
-        fetchProjects,
-        setProjects
-      }}
-    >
+    <ProjectContext.Provider value={{projects, loading, fetchProjects, setProjects}}>
       {children}
     </ProjectContext.Provider>
   )

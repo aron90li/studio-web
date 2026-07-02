@@ -12,6 +12,8 @@ import Basic from '../pages/Basic'
 import RequireAuth from './RequireAuth'
 import GlobalLayout from '../layouts/GlobalLayout'
 import { Navigate } from 'react-router-dom'
+import { UserProvider } from '../context/UserProvider'
+import { ProjectProvider } from '../context/ProjectProvider'
 
 const router = createBrowserRouter([
   { path: '/', element: <Login /> },
@@ -20,20 +22,24 @@ const router = createBrowserRouter([
   // 其他路由都放在 GlobalLayout 内，负责整体布局
   {
     path: '/stream/*', element: (
-      <RequireAuth>
-        <GlobalLayout />
-      </RequireAuth>
+      <UserProvider>
+        <ProjectProvider>
+          <RequireAuth>
+            <GlobalLayout />
+          </RequireAuth>
+        </ProjectProvider>
+      </UserProvider>
     ), children: [
       { path: 'projects', element: <Projects /> },
       { path: 'studio', element: <Navigate to="/stream/projects" replace /> },
       { path: 'studio/:projectId/:taskId?', element: <Studio /> },
-      { path: 'ops', element: <Navigate to="/stream/projects" replace />},
+      { path: 'ops', element: <Navigate to="/stream/projects" replace /> },
       { path: 'ops/:projectId', element: <Ops /> },
       { path: 'datasource', element: <Datasource /> },
       { path: 'cluster', element: <Cluster /> },
       { path: 'system', element: <System /> },
       { path: 'user', element: <User /> },
-     
+
     ]
   }
 ])

@@ -96,9 +96,10 @@ export default function Projects() {
     ];
 
     //////////////////////////////////////////////////////////////////////////////////////////////
-    useEffect(() => {
-        fetchProjects();
-    }, [fetchProjects]);
+    // ProjectProvider 中的 fetchProjects 已经执行，// 这里不需要再执行 fetchProjects，否则会重复请求，导致性能问题
+    // useEffect(() => {
+    //     fetchProjects();
+    // }, [fetchProjects]);
 
     useEffect(() => {
         setFilteredProjects(projects);
