@@ -1,9 +1,10 @@
 import axios from 'axios'
 import { getToken, clearToken } from './auth'
 import { Message } from '@arco-design/web-react'
+import { API_BASE } from './constants'
 
 const request = axios.create({
-  baseURL: 'http://localhost:8001', // 改成你的后端地址 http://localhost:8001 nginx配置写成/api
+  baseURL: API_BASE, // 改成你的后端地址 http://localhost:8001 nginx配置写成/api
   // timeout: 15000
 })
 

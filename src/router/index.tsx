@@ -9,6 +9,7 @@ import Cluster from '../pages/Cluster'
 import System from '../pages/System'
 import User from '../pages/User'
 import Basic from '../pages/Basic'
+import AIChat from '../pages/AIChat'
 import RequireAuth from './RequireAuth'
 import GlobalLayout from '../layouts/GlobalLayout'
 import { Navigate } from 'react-router-dom'
@@ -19,6 +20,17 @@ const router = createBrowserRouter([
   { path: '/', element: <Login /> },
   { path: '/register', element: <Register /> },
   { path: '/basic', element: <Basic /> },
+  {
+    path: '/aichat', element: (
+      <UserProvider>
+        <ProjectProvider>
+          <RequireAuth>
+            <AIChat />
+          </RequireAuth>
+        </ProjectProvider>
+      </UserProvider>
+    )
+  },
   // 其他路由都放在 GlobalLayout 内，负责整体布局
   {
     path: '/stream/*', element: (
