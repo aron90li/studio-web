@@ -82,7 +82,7 @@ export default function AIChat() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { injectKeyframes() }, [])
-  const scroll = useCallback(() => setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50), [])
+  const scroll = useCallback((smooth = true) => setTimeout(() => endRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' }), 50), [])
 
   // 当前 session 的派生状态
   const messages = sid ? (messagesMap[sid] || []) : []
@@ -190,7 +190,8 @@ export default function AIChat() {
         if (e.type === 'ANSWER') {
           upd(m => ({ content: (m.content || '') + e.data }))
           // 只有当前选中的 session 才自动滚动
-          if (sessionId === sid) scroll()
+          // 流式输出过程使用 auto 即时滚动，避免 smooth 动画排队导致滚动跟不上
+          if (sessionId === sid) scroll(false)
         } else if (['THINK', 'TOOL_CALL', 'TOOL_RESULT'].includes(e.type)) {
           events.push({ type: e.type as ChatEvent['type'], data: e.data, toolName: e.toolName })
           upd(() => ({ events: [...events] }))
