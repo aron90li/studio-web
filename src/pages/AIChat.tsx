@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Layout, Button, Avatar, Tag, Typography, Spin, Space, Popconfirm } from '@arco-design/web-react'
+import { Layout, Button, Avatar, Tag, Typography, Spin, Space, Popconfirm, Dropdown, Menu } from '@arco-design/web-react'
 import { IconSend, IconPlus, IconDelete, IconRobot, IconUser, IconStop, IconBulb, IconTool } from '@arco-design/web-react/icon'
 import { chatStream, getSessions, getSessionMessages, clearSession } from '../api/aiChat'
 import type { SessionInfo, DisplayMessage, ChatEvent } from '../types/aiChat'
 import { useUser } from '../context/useUser'
+import { useNavigate } from 'react-router-dom'
 
 const { Sider, Content } = Layout
 const { Text, Title } = Typography
@@ -53,7 +54,7 @@ const EventCards = ({ events, streaming }: { events: ChatEvent[]; streaming: boo
 
 // 欢迎页
 const Welcome = ({ onAsk }: { onAsk: (t: string) => void }) => {
-  const q = ['帮我写一个 React Hook', '解释 Java Stream API', '如何优化 SQL 查询', 'Python 数据分析']
+  const q = ['查询kafka主题LYL_TEST中是否包含internal_key为0001的数据', 'flinksql中如何写lookup join', '查询订单表中是否有张三的订单', '介绍一下四大名著']
   return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 40 }}>
     <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg, #4d6bfe, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}><IconRobot style={{ fontSize: 30, color: '#fff' }} /></div>
     <Title heading={4} style={{ marginBottom: 8 }}>有什么我可以帮助你的？</Title>
@@ -65,7 +66,8 @@ const Welcome = ({ onAsk }: { onAsk: (t: string) => void }) => {
 }
 
 export default function AIChat() {
-  const { user } = useUser()
+  const { user, logout } = useUser()
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<SessionInfo[]>([])
   const [sid, setSid] = useState<string | undefined>()
   const [loading, setLoading] = useState(false)
@@ -276,14 +278,33 @@ export default function AIChat() {
       <Content style={{ display: 'flex', flexDirection: 'column', background: '#f2f3f5' }}>
         {/* 用户信息 - 右上角 */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 24px', flexShrink: 0 }}>
-          <Space>
-            <Avatar size={32} style={{ background: 'linear-gradient(135deg, #4d6bfe, #8b5cf6)' }}>
-              {user?.username?.[0]?.toUpperCase() || 'U'}
-            </Avatar>
-            <div>
-              <Text style={{ fontSize: 13, fontWeight: 500, display: 'block' }}>{user?.username || '未登录'}</Text>
+          <Dropdown
+            droplist={
+              <Menu
+                onClickMenuItem={(key) => {
+                  if (key === 'logout') {
+                    logout()
+                    navigate('/')
+                  }
+                }}
+              >
+                <Menu.Item key="logout">退出登录</Menu.Item>
+              </Menu>
+            }
+            triggerProps={{ autoFitPosition: true }}
+            position="br"
+          >
+            <div style={{ cursor: 'pointer' }}>
+              <Space>
+                <Avatar size={32} style={{ background: 'linear-gradient(135deg, #4d6bfe, #8b5cf6)' }}>
+                  {user?.username?.[0]?.toUpperCase() || 'U'}
+                </Avatar>
+                <div>
+                  <Text style={{ fontSize: 13, fontWeight: 500, display: 'block' }}>{user?.username || '未登录'}</Text>
+                </div>
+              </Space>
             </div>
-          </Space>
+          </Dropdown>
         </div>
 
         {/* 消息区域 */}

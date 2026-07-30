@@ -61,7 +61,8 @@ export default function Login() {
       }
 
       Message.success('登录成功')
-      navigate('/stream/projects')
+      navigate('/aichat') // 登录成功后跳转到AI聊天页面 /stream/projects
+
     } catch (err) {
       console.error('登录请求失败:', err)
       Message.error('请求失败，请稍后再试')
@@ -75,7 +76,7 @@ export default function Login() {
         {/* 左侧介绍 */}
         <div style={styles.left}>
           <Title heading={3} style={{ color: '#fff' }}>
-            Stream Studio
+            AI Stream Studio
           </Title>
           <Text style={{ color: 'rgba(255,255,255,.8)' }}>流计算开发</Text>
         </div>

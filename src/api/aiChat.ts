@@ -3,7 +3,7 @@ import type { AgentChatRequest, AgentChatResponse, SessionInfo, ChatMessage, Api
 import type { AxiosResponse } from 'axios'
 import { API_BASE } from '../utils/constants'
 
-const BASE_URL = '/api/ai'
+const BASE_URL = '/api/ai/v2'
 
 /**
  * SSE 流式对话
@@ -24,7 +24,7 @@ export function chatStream(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  fetch(`${API_BASE}${BASE_URL}/chat/stream`, {
+  fetch(`${API_BASE}${BASE_URL}/chatStream`, {
     method: 'POST',
     headers,
     body: JSON.stringify(data),
