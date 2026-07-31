@@ -52,7 +52,7 @@ export interface ApiResponse<T> {
 
 /** 中间事件 */
 export interface ChatEvent {
-  type: 'THINK' | 'TOOL_CALL' | 'TOOL_RESULT'
+  type: 'THINK' | 'TOOL_CALL' | 'TOOL_RESULT' | 'DONE'
   data: string
   toolName?: string
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Layout, Button, Avatar, Tag, Typography, Spin, Space, Popconfirm, Dropdown, Menu } from '@arco-design/web-react'
-import { IconSend, IconPlus, IconDelete, IconRobot, IconUser, IconStop, IconBulb, IconTool } from '@arco-design/web-react/icon'
+import { IconSend, IconPlus, IconDelete, IconRobot, IconUser, IconStop, IconBulb, IconTool, IconCheck } from '@arco-design/web-react/icon'
 import { chatStream, getSessions, getSessionMessages, clearSession } from '../api/aiChat'
 import type { SessionInfo, DisplayMessage, ChatEvent } from '../types/aiChat'
 import { useUser } from '../context/useUser'
@@ -70,12 +70,12 @@ const EventCards = ({ events, streaming }: { events: ChatEvent[]; streaming: boo
   return <Space direction="vertical" size={4} style={{ marginBottom: 8, width: '100%' }}>
     {events.map((evt, i) => {
       const a = streaming && i === events.length - 1
-      const isThink = evt.type === 'THINK', isTool = evt.type === 'TOOL_CALL'
-      const c = isThink ? 'arcoblue' : isTool ? 'purple' : 'green'
-      const label = isThink ? '思考中' : isTool ? '调用工具' : '工具结果'
+      const isThink = evt.type === 'THINK', isTool = evt.type === 'TOOL_CALL', isDone = evt.type === 'DONE'
+      const c = isThink ? 'arcoblue' : isTool ? 'purple' : isDone ? 'green' : 'green'
+      const label = isThink ? '思考中' : isTool ? '调用工具' : isDone ? '完成' : '工具结果'
       return <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 8, border: `1px solid ${a ? '#4d6bfe30' : '#f0f0f2'}`, background: a ? '#4d6bfe08' : '#f8f9fb', animation: a ? 'event-pulse 2s ease-in-out infinite' : undefined }}>
         <Tag color={c} style={{ borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
-          {isThink ? <IconBulb /> : isTool ? <IconTool /> : <IconRobot />}<span style={{ marginLeft: 4 }}>{label}</span>
+          {isThink ? <IconBulb /> : isTool ? <IconTool /> : isDone ? <IconCheck /> : <IconRobot />}<span style={{ marginLeft: 4 }}>{label}</span>
         </Tag>
         <div style={{ flex: 1, minWidth: 0 }}>
           {evt.toolName && <Tag size="small" style={{ marginBottom: 2, fontSize: 11 }}>{evt.toolName}</Tag>}
@@ -229,7 +229,7 @@ export default function AIChat() {
           // 只有当前选中的 session 才自动滚动
           // 流式输出过程使用 auto 即时滚动，避免 smooth 动画排队导致滚动跟不上
           if (sessionId === sid) scroll(false)
-        } else if (['THINK', 'TOOL_CALL', 'TOOL_RESULT'].includes(e.type)) {
+        } else if (['THINK', 'TOOL_CALL', 'TOOL_RESULT', 'DONE'].includes(e.type)) {
           events.push({ type: e.type as ChatEvent['type'], data: e.data, toolName: e.toolName })
           upd(() => ({ events: [...events] }))
         }
