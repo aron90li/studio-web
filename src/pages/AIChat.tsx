@@ -9,6 +9,20 @@ import { useNavigate } from 'react-router-dom'
 const { Sider, Content } = Layout
 const { Text, Title } = Typography
 
+// 兼容 Chrome 103 / 非安全上下文的 UUID 生成
+const generateUUID = (): string => {
+  // 优先使用 crypto.randomUUID（HTTPS / localhost 安全上下文下可用）
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback: 使用 crypto.getRandomValues 构造 UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15) >> (c === 'x' ? 0 : 0)
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 // 动画 keyframes 注入（替代已删除的 CSS 文件）
 const injectKeyframes = () => {
   if (document.getElementById('ai-chat-kf')) return
@@ -108,7 +122,7 @@ export default function AIChat() {
       if (r.data.success) {
         const loaded = r.data.data
           .filter((m: any) => m.role === 'user' || m.role === 'assistant')
-          .map((m: any) => ({ id: crypto.randomUUID(), role: m.role as 'user' | 'assistant', content: m.content, timestamp: new Date(m.createTime).getTime() }))
+          .map((m: any) => ({ id: generateUUID(), role: m.role as 'user' | 'assistant', content: m.content, timestamp: new Date(m.createTime).getTime() }))
         // 如果服务端返回了消息，但本地 map 中已有更新版本（流式进行中），则不再覆盖
         setMessagesMap(p => {
           const existing = p[id]
@@ -160,7 +174,7 @@ export default function AIChat() {
     if (!text || sending) return
     setInput('')
 
-    const sessionId: string = sid || crypto.randomUUID()
+    const sessionId: string = sid || generateUUID()
     if (!sid) {
       setSid(sessionId)
       setSessions(p => [{ sessionId, title: text, messageCount: 0, lastActiveTime: new Date().toISOString() }, ...p])
@@ -168,8 +182,8 @@ export default function AIChat() {
 
     setSendingMap(p => ({ ...p, [sessionId]: true }))
 
-    const um: DisplayMessage = { id: crypto.randomUUID(), role: 'user', content: text, timestamp: Date.now() }
-    const am: DisplayMessage = { id: crypto.randomUUID(), role: 'assistant', content: '', timestamp: Date.now(), isStreaming: true, events: [] }
+    const um: DisplayMessage = { id: generateUUID(), role: 'user', content: text, timestamp: Date.now() }
+    const am: DisplayMessage = { id: generateUUID(), role: 'assistant', content: '', timestamp: Date.now(), isStreaming: true, events: [] }
     streamMsgIdRef.current[sessionId] = am.id
 
     updateMessagesForSession(sessionId, prev => [...prev, um, am])
