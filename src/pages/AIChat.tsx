@@ -5,6 +5,8 @@ import { chatStream, getSessions, getSessionMessages, clearSession } from '../ap
 import type { SessionInfo, DisplayMessage, ChatEvent } from '../types/aiChat'
 import { useUser } from '../context/useUser'
 import { useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const { Sider, Content } = Layout
 const { Text, Title } = Typography
@@ -36,6 +38,25 @@ const injectKeyframes = () => {
     '.tc{display:inline-block;width:2px;height:16px;background:#4d6bfe;margin-left:2px;vertical-align:text-bottom;animation:type-blink .8s step-end infinite}',
     '.ld{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4d6bfe;animation:dot-bounce 1.4s ease-in-out infinite}',
     '.ld.d1{animation-delay:0s}.ld.d2{animation-delay:.2s}.ld.d3{animation-delay:.4s}',
+    // Markdown 渲染样式
+    '.md-content p{margin:0 0 8px}.md-content p:last-child{margin-bottom:0}',
+    '.md-content ul,.md-content ol{padding-left:20px;margin:4px 0 8px}',
+    '.md-content li{margin-bottom:4px}',
+    '.md-content code{background:rgba(77,107,254,.08);color:#4d6bfe;padding:2px 6px;border-radius:4px;font-size:13px;font-family:\'SF Mono\',\'Monaco\',\'Inconsolata\',\'Fira Code\',\'Droid Sans Mono\',\'Source Code Pro\',monospace}',
+    '.md-content pre{background:#1e1e2e;color:#cdd6f4;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:8px 0;font-size:13px;line-height:1.6}',
+    '.md-content pre code{background:none;color:inherit;padding:0;font-size:inherit;border-radius:0}',
+    '.md-content table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px}',
+    '.md-content th,.md-content td{border:1px solid #e5e6eb;padding:8px 12px;text-align:left}',
+    '.md-content th{background:#f5f6f8;font-weight:600}',
+    '.md-content blockquote{border-left:3px solid #4d6bfe;margin:8px 0;padding:4px 12px;color:#86909c;background:rgba(77,107,254,.04);border-radius:0 6px 6px 0}',
+    '.md-content a{color:#4d6bfe;text-decoration:none}',
+    '.md-content a:hover{text-decoration:underline}',
+    '.md-content h1,.md-content h2,.md-content h3,.md-content h4{margin:12px 0 6px;font-weight:600;line-height:1.3}',
+    '.md-content h1{font-size:20px}.md-content h2{font-size:18px}.md-content h3{font-size:16px}.md-content h4{font-size:15px}',
+    '.md-content hr{border:none;border-top:1px solid #e5e6eb;margin:12px 0}',
+    '.md-content img{max-width:100%;border-radius:8px;margin:8px 0}',
+    '.md-content strong{font-weight:600}',
+    '.md-content em{font-style:italic}',
   ].join('\n')
   document.head.appendChild(s)
 }
@@ -347,9 +368,16 @@ export default function AIChat() {
                     <div style={{ maxWidth: 'calc(100% - 80px)', display: 'flex', flexDirection: 'column', alignItems: u ? 'flex-end' : 'flex-start' }}>
                       {!u && msg.events && msg.events.length > 0 && <EventCards events={msg.events} streaming={msg.isStreaming || false} />}
                       {msg.content ? (
-                        <div style={{ padding: '12px 16px', borderRadius: u ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: u ? '#4d6bfe' : '#ffffff', color: u ? '#fff' : '#1d2129', border: u ? 'none' : '1px solid #f0f0f2', lineHeight: 1.7, fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                          {msg.content}{msg.isStreaming && <span className="tc" />}
-                        </div>
+                        u ? (
+                          <div style={{ padding: '12px 16px', borderRadius: '14px 14px 4px 14px', background: '#4d6bfe', color: '#fff', lineHeight: 1.7, fontSize: 14, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {msg.content}
+                          </div>
+                        ) : (
+                          <div className="md-content" style={{ padding: '12px 16px', borderRadius: '14px 14px 14px 4px', background: '#ffffff', color: '#1d2129', border: '1px solid #f0f0f2', lineHeight: 1.7, fontSize: 14, wordBreak: 'break-word' }}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                            {msg.isStreaming && <span className="tc" />}
+                          </div>
+                        )
                       ) : msg.isStreaming ? (
                         <div style={{ padding: '12px 24px', borderRadius: '14px 14px 14px 4px', background: '#fff', border: '1px solid #f0f0f2' }}><Dots /></div>
                       ) : null}
