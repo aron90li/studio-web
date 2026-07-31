@@ -237,7 +237,7 @@ export default function AIChat() {
       // onError
       (error: Error) => {
         setSendingMap(p => ({ ...p, [sessionId]: false }))
-        upd(m => ({ content: m.content || `请求失败: ${error.message}`, isStreaming: false }))
+        upd(m => ({ content: m.content || `大模型请求失败: ${error.message}`, isStreaming: false }))
       },
       // onComplete
       () => {
