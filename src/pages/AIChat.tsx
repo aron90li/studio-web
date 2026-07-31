@@ -213,15 +213,18 @@ export default function AIChat() {
           upd(() => ({ events: [...events] }))
         }
       },
-      () => {
+      // onError
+      (error: Error) => {
         setSendingMap(p => ({ ...p, [sessionId]: false }))
-        upd(m => ({ content: m.content || '请求失败', isStreaming: false }))
+        upd(m => ({ content: m.content || `请求失败: ${error.message}`, isStreaming: false }))
       },
+      // onComplete
       () => {
         setSendingMap(p => ({ ...p, [sessionId]: false }))
         upd(() => ({ isStreaming: false }))
         loadSessions()
       },
+      // signal
       abort.signal,
     )
   }, [input, sending, sid, loadSessions, scroll, updateMessagesForSession])
