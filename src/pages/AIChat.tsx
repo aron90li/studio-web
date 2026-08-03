@@ -43,7 +43,7 @@ const injectKeyframes = () => {
     '.md-content ul,.md-content ol{padding-left:20px;margin:4px 0 8px}',
     '.md-content li{margin-bottom:4px}',
     '.md-content code{background:rgba(77,107,254,.08);color:#4d6bfe;padding:2px 6px;border-radius:4px;font-size:13px;font-family:\'SF Mono\',\'Monaco\',\'Inconsolata\',\'Fira Code\',\'Droid Sans Mono\',\'Source Code Pro\',monospace}',
-    '.md-content pre{background:#1e1e2e;color:#cdd6f4;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:8px 0;font-size:13px;line-height:1.6}',
+    '.md-content pre{background:#f5f5f5;color:#1d2129; border:1px solid #e8e8ea;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:8px 0;font-size:13px;line-height:1.6}',
     '.md-content pre code{background:none;color:inherit;padding:0;font-size:inherit;border-radius:0}',
     '.md-content table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px}',
     '.md-content th,.md-content td{border:1px solid #e5e6eb;padding:8px 12px;text-align:left}',
