@@ -68,7 +68,7 @@ export function chatStream(
             }
             if (event.type === 'ERROR') {
               onError(new Error(event.data || 'AI 响应异常'))
-              return
+              // return
             }
           } catch {
             // 非 JSON 数据忽略

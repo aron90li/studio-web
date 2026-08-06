@@ -221,8 +221,42 @@ export default function AIChat() {
       updateMessagesForSession(sessionId, prev => prev.map(m => m.id === targetMsgId ? { ...m, ...fn(m) } : m))
     }
 
+    const parseError = (raw: string): string => {
+      // 匹配 token 上下文超限，同时提取 max / input / output
+      const m = raw.match(
+        /maximum context length is (\d+)\s*tokens.*?you requested (\d+)\s*output tokens.*?prompt contains at least (\d+)\s*input tokens/i
+      )
+      if (m) {
+        const maxTokens = Number(m[1])     // 32768
+        const outputTokens = Number(m[2])  // 4096
+        const inputTokens = Number(m[3])   // 28673
+        const total = inputTokens + outputTokens
+        return [
+          `⚠️ **大模型上下文长度超出限制**`,
+          ``,
+          `| 项目 | Token 数量 |`,
+          `|------|-----------|`,
+          `| 模型最大上下文 | **${maxTokens.toLocaleString()}** |`,
+          `| 您的输入 | ${inputTokens.toLocaleString()} |`,
+          `| 请求输出量 | ${outputTokens.toLocaleString()} |`,
+          `| **合计** | **${total.toLocaleString()}** ❌ |`,
+          ``,
+          `输入（${inputTokens.toLocaleString()}）本身未超限，`,
+          `但加上请求的输出量（${outputTokens.toLocaleString()}）后总计 ${total.toLocaleString()}，`,
+          `超出了模型最大上下文 **${maxTokens.toLocaleString()}**。`,
+          ``,
+          `💡 **建议操作：**`,
+          `- 缩短输入内容，换一种更简洁的问法`,
+          `- 点击左侧 **"新建对话"** 减少历史对话的 token 消耗`,
+          `- 减少单次查询涉及的数据量`,
+        ].join('\n')
+      }
+      const cleaned = raw.replace(/^处理异常:\s*/i, '').trim()
+      return `⚠️ 请求失败：${cleaned}`
+    }
     chatStream(
       { message: text, sessionId },
+      // onEvent
       (e) => {
         if (e.type === 'ANSWER') {
           upd(m => ({ content: (m.content || '') + e.data }))
@@ -237,7 +271,10 @@ export default function AIChat() {
       // onError
       (error: Error) => {
         setSendingMap(p => ({ ...p, [sessionId]: false }))
-        upd(m => ({ content: m.content || `大模型请求失败: ${error.message}`, isStreaming: false }))
+        upd(m => ({
+          content: (m.content ? m.content + '\n\n---\n' : '') + parseError(error.message),
+          isStreaming: false,
+        }))
       },
       // onComplete
       () => {
@@ -275,7 +312,7 @@ export default function AIChat() {
             </div>
             <Button type="primary" long icon={<IconPlus />} onClick={newChat} style={{ borderRadius: 10 }}>新建对话</Button>
           </div>
-          
+
           <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px' }}>
             {sessions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 16px' }}>
