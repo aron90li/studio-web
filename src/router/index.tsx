@@ -15,6 +15,8 @@ import GlobalLayout from '../layouts/GlobalLayout'
 import { Navigate } from 'react-router-dom'
 import { UserProvider } from '../context/UserProvider'
 import { ProjectProvider } from '../context/ProjectProvider'
+import DbTool from '../pages/tools/DbTool'
+import KafkaTool from '../pages/tools/KafkaTool'
 
 const router = createBrowserRouter([
   { path: '/', element: <Login /> },
@@ -53,6 +55,28 @@ const router = createBrowserRouter([
       { path: 'user', element: <User /> },
 
     ]
+  },
+  {
+    path: '/tools/db', element: (
+      <UserProvider>
+        <ProjectProvider>
+          <RequireAuth>
+            <DbTool />
+          </RequireAuth>
+        </ProjectProvider>
+      </UserProvider>
+    )
+  },
+  {
+    path: '/tools/kafka', element: (
+      <UserProvider>
+        <ProjectProvider>
+          <RequireAuth>
+            <KafkaTool />
+          </RequireAuth>
+        </ProjectProvider>
+      </UserProvider>
+    )
   }
 ])
 
