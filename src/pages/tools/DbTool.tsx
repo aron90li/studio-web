@@ -4,32 +4,12 @@ import { IconCode, IconPlayArrow, IconRefresh } from '@arco-design/web-react/ico
 import Editor from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import loader from '@monaco-editor/loader'
-import request from '../../utils/request'
+import { getDbConnections, executeSql as executeSqlApi } from '../../api/dbTool'
+import type { DbConnection, MysqlQueryResult } from '../../types/dbTool'
 
 loader.config({ monaco })
 
-interface DbConnection {
-	name: string
-	driverClassName?: string
-	url?: string
-	username?: string
-}
-
-interface MysqlQueryResult {
-	count: number
-	affectedRows: number
-	data: Array<Record<string, unknown>>
-	error?: string | null
-}
-
-interface ApiResponse<T> {
-	data: T
-	success: boolean
-	msg: string
-	code: number
-}
-
-const DEFAULT_SQL = 'SELECT *\nFROM your_table\nLIMIT 100;'
+const DEFAULT_SQL = 'SELECT * FROM your_table LIMIT 100;'
 
 function getDisplayValue(value: unknown): string {
 	if (value === null || value === undefined) return ''
@@ -49,7 +29,7 @@ export default function DbTool() {
 	const fetchConnections = useCallback(async () => {
 		setLoadingConnections(true)
 		try {
-			const response = await request.get<ApiResponse<DbConnection[]>>('/api/tools/db/connections')
+			const response = await getDbConnections()
 			if (!response.data.success) {
 				Message.error(response.data.msg || '获取数据库连接失败')
 				return
@@ -108,7 +88,7 @@ export default function DbTool() {
 		setExecuting(true)
 		setResult(null)
 		try {
-			const response = await request.post<ApiResponse<MysqlQueryResult>>('/api/tools/db/execute', {
+			const response = await executeSqlApi({
 				connectionName: selectedConnection,
 				sql: trimmedSql
 			})
