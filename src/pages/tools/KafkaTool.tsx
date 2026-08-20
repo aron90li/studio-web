@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Card, DatePicker, Empty, Form, Input, InputNumber, Message, Select, Spin, Table } from '@arco-design/web-react'
-import { IconRefresh, IconSearch } from '@arco-design/web-react/icon'
+import { IconDown, IconRefresh, IconSearch, IconUp } from '@arco-design/web-react/icon'
 import { getKafkaClusters, getKafkaTopics, searchMessage } from '../../api/kafkaTool'
 import type { KafkaCluster, KafkaMessage, KafkaTopicInfo } from '../../types/kafkaTool'
 
@@ -23,6 +23,7 @@ export default function KafkaTool() {
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
   const [selectedCluster, setSelectedCluster] = useState<string>()
+  const [showMore, setShowMore] = useState(false)
 
   const [form] = Form.useForm<SearchForm>()
 
@@ -209,31 +210,42 @@ export default function KafkaTool() {
             <Form.Item label="查询内容" field="searchValue">
               <Input placeholder="按消息内容过滤" />
             </Form.Item>
-            <Form.Item label="条数上限" field="limitCount">
-              <InputNumber placeholder="查询条数" min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="超时时间(分钟)" field="timeout">
-              <InputNumber placeholder="查询超时时间" min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="开始时间" field="beginTime">
-              <DatePicker
-                showTime
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择开始时间"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item label="结束时间" field="endTime">
-              <DatePicker
-                showTime
-                format="YYYY-MM-DD HH:mm:ss"
-                placeholder="请选择结束时间"
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+
+          {showMore && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
+              <Form.Item label="条数上限" field="limitCount">
+                <InputNumber placeholder="查询条数" min={1} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="超时时间(分钟)" field="timeout">
+                <InputNumber placeholder="查询超时时间" min={1} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="开始时间" field="beginTime">
+                <DatePicker
+                  showTime
+                  format="YYYY-MM-DD HH:mm:ss"
+                  placeholder="请选择开始时间"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+              <Form.Item label="结束时间" field="endTime">
+                <DatePicker
+                  showTime
+                  format="YYYY-MM-DD HH:mm:ss"
+                  placeholder="请选择结束时间"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <Button
+              icon={showMore ? <IconUp /> : <IconDown />}
+              onClick={() => setShowMore((prev) => !prev)}
+            >
+              更多条件
+            </Button>
             <Button icon={<IconRefresh />} onClick={() => void fetchClusters()}>刷新集群</Button>
             <Button type="primary" icon={<IconSearch />} loading={searching} onClick={() => void handleSearch()}>查询</Button>
           </div>
